@@ -17,7 +17,7 @@ library(units)
 
 #### Load data ####
 
-dat <- read.csv('Processed_data/SSM_mp8hr_FDN Cmydas tracks.csv')
+dat <- read.csv('Processed_data/SSM_CRW8hr_FDN Cmydas tracks.csv')
 
 glimpse(dat)
 summary(dat)
@@ -48,7 +48,7 @@ plot(dat.kde.ref, col = c("red", "blue"))
 kde.href.contours <- hr_isopleths(dat.kde.ref)
 
 
-brazil<- ne_countries(scale = 50, country = "Brazil", returnclass = 'sf')
+brazil<- ne_countries(scale = 10, country = "Brazil", returnclass = 'sf')
 
 # Plot returned raster layer (may not be ideal in some instances)
 ggplot() +
@@ -119,7 +119,7 @@ dat.id.kde.href <- dat.track %>%
       ) %>%
   map(hr_isopleths) %>%  #extract contours from raster layers
   do.call(rbind, .)  #merge all contours into single `sf` object
-toc()  #takes 28 sec to run
+toc()  #takes 2.5 min to run
 BRRR::skrrrahh('ross1')  #let me know that it's done running!
 
 dat.id.kde.href <- dat.id.kde.href %>%
@@ -167,7 +167,7 @@ dat.mig.kde.hpi <- dat.id.list[mig.ind] %>%
   ) %>%
   map(hr_isopleths) %>%
   do.call(rbind, .)
-toc()  #takes 3 sec to run
+toc()  #takes 30 sec to run
 BRRR::skrrrahh('khaled3')
 
 
@@ -223,4 +223,4 @@ ggplot(dat.id.kde, aes(factor(level), area, color = method)) +
 
 #### Export datasets for easy loading ####
 
-save(dat.id.kde.href, dat.id.kde.hpi, file = "Processed_data/KDE_fits.RData")
+save(kde.href.contours, kde.hpi.contours, dat.id.kde.href, dat.id.kde.hpi, file = "Processed_data/KDE_fits.RData")

@@ -20,7 +20,7 @@ load("Processed_data/MCP_fits.RData")
 load("Processed_data/KDE_fits.RData")
 load("Processed_data/dBBMM_fits.RData")
 
-dat <- read.csv('Processed_data/SSM_mp8hr_FDN Cmydas tracks.csv')
+dat <- read.csv('Processed_data/SSM_CRW8hr_FDN Cmydas tracks.csv')
 
 
 #### Wrangle model results to match up properly ####
@@ -48,7 +48,7 @@ dbbmm <- contours2 %>%
 
 #### Visually compare UDs among methods ####
 
-brazil<- ne_countries(scale = 50, country = "Brazil", returnclass = 'sf') %>%
+brazil<- ne_countries(scale = 10, country = "Brazil", returnclass = 'sf') %>%
   st_transform(crs = "+proj=merc +lon_0=0 +datum=WGS84 +units=km +no_defs") %>%
   dplyr::select(-level)
 
@@ -56,10 +56,14 @@ ud.all <- rbind(mcp, kde.href, kde.hpi, dbbmm)
 
 
 # Show all IDs, methods, and levels
+ind_1_5 <- unique(dat$id)[1:5]
+
 ggplot() +
   geom_sf(data = brazil) +
-  geom_path(data = dat, aes(x, y, group = id), size = 0.5, alpha = 0.5) +
-  geom_sf(data = ud.all, aes(color = method), fill = "transparent", size = 0.5) +
+  geom_path(data = dat %>%
+              filter(id %in% ind_1_5), aes(x, y, group = id), size = 0.5, alpha = 0.5) +
+  geom_sf(data = ud.all %>%
+            filter(id %in% ind_1_5), aes(color = method), fill = "transparent", size = 0.5) +
   scale_color_met_d('Egypt') +
   theme_bw() +
   coord_sf(xlim = c(min(dat$x) - 50, max(dat$x) + 50),
@@ -68,11 +72,12 @@ ggplot() +
 #large disparity among methods for migrating IDs
 
 # Zoom in on resident IDs
+residents <- c(205542, 205544, 226069, 226071, 226072)
 ggplot() +
   geom_path(data = dat %>%
-              filter(id %in% c(205544,226072)), aes(x, y, group = id), size = 0.5, alpha = 0.15) +
+              filter(id %in% residents), aes(x, y, group = id), size = 0.5, alpha = 0.15) +
   geom_sf(data = ud.all %>%
-            filter(id %in% c(205544,226072)), aes(color = method), fill = "transparent", size = 0.5) +
+            filter(id %in% residents), aes(color = method), fill = "transparent", size = 0.5) +
   scale_color_met_d('Egypt') +
   theme_bw() +
   facet_grid(id ~ level)
@@ -86,7 +91,7 @@ ggplot() +
 #### Compare estimated area of space-use ####
 
 ud.all$area <- st_area(ud.all)
-ud.all$strategy <- ifelse(ud.all$id %in% c(205544,226072), 'Resident', 'Migratory')
+ud.all$strategy <- ifelse(ud.all$id %in% residents, 'Resident', 'Migratory')
 
 
 # Compare by method and UD level

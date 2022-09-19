@@ -17,7 +17,7 @@ library(MetBrewer)
 
 #### Load data ####
 
-dat <- read.csv('Processed_data/SSM_mp8hr_FDN Cmydas tracks.csv')
+dat <- read.csv('Processed_data/SSM_CRW8hr_FDN Cmydas tracks.csv')
 
 glimpse(dat)
 summary(dat)
@@ -34,7 +34,7 @@ dat <- dat %>%
 
 
 # Viz histogram of smallest location SEs
-hist(dat$SE)  #units are in km; vast majority (97%) under 1 km
+hist(dat$SE)  #units are in km; vast majority (94%) under 1 km
 
 
 # Split data into list by ID
@@ -70,8 +70,9 @@ for (i in 1:length(dat.list)) {
 
   tic()
   dat.list[[i]] <- brownian.bridge.dyn(object = dat.mov, raster = 0.25, location.error = "SE",
-                                       margin = 9, window.size = 29, ext = rast.ext)
+                                       margin = 3, window.size = 21, ext = rast.ext)
   toc()
+  #window size set to match 1 week of obs; margin reduced to increase probability of finding strong brkpts
 
 
   ## Extract 50 and 95% contours of space-use
@@ -114,7 +115,7 @@ contours2 <- do.call(rbind, contours) %>%
 
 ## Let's viz the results
 
-brazil<- ne_countries(scale = 50, country = "Brazil", returnclass = 'sf') %>%
+brazil<- ne_countries(scale = 10, country = "Brazil", returnclass = 'sf') %>%
   st_transform(crs = "+proj=merc +lon_0=0 +datum=WGS84 +units=km +no_defs")
 
 ggplot() +
@@ -208,3 +209,4 @@ ggplot() +
 #### Export datasets for easy loading ####
 
 save(contours2, file = "Processed_data/dBBMM_fits.RData")
+

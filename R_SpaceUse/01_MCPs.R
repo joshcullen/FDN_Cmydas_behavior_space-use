@@ -13,7 +13,7 @@ library(plotly)
 
 #### Load data ####
 
-dat <- read.csv('Processed_data/SSM_mp8hr_FDN Cmydas tracks.csv')
+dat <- read.csv('Processed_data/SSM_CRW8hr_FDN Cmydas tracks.csv')
 
 glimpse(dat)
 summary(dat)
@@ -35,7 +35,7 @@ dat.mcp
 plot(dat.mcp, col = c('red','green','blue'))
 
 
-brazil<- ne_countries(scale = 50, country = "Brazil", returnclass = 'sf')
+brazil<- ne_countries(scale = 10, country = "Brazil", returnclass = 'sf')
 
 ggplot() +
   geom_sf(data = brazil) +
@@ -78,4 +78,4 @@ ggplotly(
 
 #### Export datasets for easy loading ####
 
-save(dat.id.mcp, file = "Processed_data/MCP_fits.RData")
+save(dat.mcp, dat.id.mcp, file = "Processed_data/MCP_fits.RData")
