@@ -372,7 +372,7 @@ dat.list <- dat.disc %>%
   df_to_list(., "id")
 
 # Only retain id and discretized data streams
-dat.list.sub<- map(dat.list,
+dat.list.sub<- purrr::map(dat.list,
                    subset,
                    select = c(id, SL, TA, Disp))
 
@@ -410,7 +410,7 @@ traceplot(data = dat.res.seg1, type = "nbrks")
 
 #Pre-define these migratory phases
 dat.list <- dat.list %>%
-  map(., ~{.x %>%
+  purrr::map(., ~{.x %>%
       mutate(phase = case_when(disp < 6 ~ 1,
                                step > 4 ~ 2,
                                disp > 6 & step < 4 ~ 3)
@@ -424,7 +424,7 @@ ggplot(bind_rows(dat.list), aes(date, disp)) +
 
 
 #Find breakpoints based on 'phase'
-breaks<- map(dat.list, ~find_breaks(dat = ., ind = "phase"))
+breaks<- purrr::map(dat.list, ~find_breaks(dat = ., ind = "phase"))
 breaks  #since some IDs have 0 estimated breaks and model needs at least 1 for all IDs, provide 1 fake brkpt
 
 #All IDs need at least 1 proposed breakpoint; just create dummy location
@@ -530,7 +530,7 @@ dat.list2 <- dat.disc2 %>%
   df_to_list(., "id")
 
 # Only retain id and discretized data streams
-dat.list.sub2<- map(dat.list2,
+dat.list.sub2<- purrr::map(dat.list2,
                    subset,
                    select = c(id, SL, TA, Disp))
 
@@ -613,7 +613,7 @@ set.seed(2022)
 # Prepare for Gibbs sampler
 ngibbs<- 10000  #number of MCMC iterations for Gibbs sampler
 nburn<- ngibbs/2  #number of iterations for burn-in
-nmaxclust<- 7  #same as used for mixture model on observations
+nmaxclust<- 9  #same as used for mixture model on observations
 ndata.types<- length(nbins)  #number of data types
 
 # Set priors for LDA clustering model
@@ -694,17 +694,17 @@ ggplot(behav.res.seg, aes(x = bin.vals, y = prop, fill = as.factor(behav))) +
         axis.text.x.bottom = element_text(size = 12, angle = 45, vjust = 1, hjust=1),
         strip.text = element_text(size = 14),
         strip.text.x = element_text(face = "bold")) +
-  scale_fill_manual(values = c(viridis::viridis(6), rep("grey35", 1)), guide = 'none') +
+  scale_fill_manual(values = c(viridis::viridis(7), rep("grey35", 2)), guide = 'none') +
   scale_y_continuous(breaks = c(0.00, 0.50, 1.00)) +
   facet_grid(behav ~ var, scales = "free_x")
-#actually looks like states 1-6 make sense; but states 3, 5, and 6 are all foraging
+#actually looks like states 1-7 make sense; but states 3, 5-7 are all foraging
 
 
-# Merge states 3, 5, and 6 together
+# Merge states 3, 5-7 together
 tmp <- behav.res.seg %>%
   split(.$behav)
-tmp[[3]]$prop <- (tmp[[3]]$prop + tmp[[5]]$prop + tmp[[6]]$prop) / 3  #calc mean of state-dependent distribs
-behav.res.seg2 <- tmp[c(1:4,7)] %>%
+tmp[[3]]$prop <- (tmp[[3]]$prop + tmp[[5]]$prop + tmp[[6]]$prop + tmp[[7]]$prop) / 4  #calc mean of state-dependent distribs
+behav.res.seg2 <- tmp[c(1:4,8:9)] %>%
   bind_rows()
 
 ggplot(behav.res.seg2, aes(x = bin.vals, y = prop, fill = as.factor(behav))) +
@@ -716,12 +716,12 @@ ggplot(behav.res.seg2, aes(x = bin.vals, y = prop, fill = as.factor(behav))) +
         axis.text.x.bottom = element_text(size = 12, angle = 45, vjust = 1, hjust=1),
         strip.text = element_text(size = 14),
         strip.text.x = element_text(face = "bold")) +
-  scale_fill_manual(values = c(viridis::viridis(4), rep("grey35", 1)), guide = 'none') +
+  scale_fill_manual(values = c(viridis::viridis(4), rep("grey35", 2)), guide = 'none') +
   scale_y_continuous(breaks = c(0.00, 0.50, 1.00)) +
   facet_grid(behav ~ var, scales = "free_x")
 
 
-theta.estim[,3] <- theta.estim[,3] + theta.estim[,5] + theta.estim[,6]
+theta.estim[,3] <- theta.estim[,3] + theta.estim[,5] + theta.estim[,6] + theta.estim[,7]
 
 
 #Reformat proportion estimates for all track segments
@@ -829,5 +829,5 @@ ggplot() +
 
 #### Export datasets for easy loading ####
 
-save(behav.res.seg2, theta.estim.long, dat.out, dat.res.seg3, dat.res.segclust,
+save(behav.res.obs, dat.states2, behav.res.seg2, theta.estim.long, dat.out, dat.res.seg3, dat.res.segclust,
      file = "Processed_data/bayesmove_model_fits.RData")

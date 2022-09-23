@@ -1,0 +1,756 @@
+---
+title: "Summary of FDN turtle behavioral state estimates"
+author: Josh Cullen
+date: "`r Sys.Date()`"
+format: 
+  pdf:
+    toc: true
+    number-sections: true
+    number-depth: 2
+    colorlinks: true
+    fig-pos: 'H'
+    fig-width: 6
+    fig-dpi: 400
+    fig-format: png
+execute: 
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: load_data
+library(tidyverse)
+library(lubridate)
+# library(foieGras)  
+library(momentuHMM) 
+# library(bayesmove)
+library(sf)  
+library(rnaturalearth)
+
+
+
+#### Load the model results from each method ####
+
+ssm_irreg <- read.csv("../Processed_data/SSM_irreg_FDN Cmydas tracks.csv")
+ssm_1hr <- read.csv("../Processed_data/SSM_CRW1hr_FDN Cmydas tracks.csv")
+ssm_4hr <- read.csv("../Processed_data/SSM_CRW4hr_FDN Cmydas tracks.csv")
+ssm_8hr <- read.csv("../Processed_data/SSM_CRW8hr_FDN Cmydas tracks.csv")
+
+load("../Processed_data/SSM_model_fits.RData")
+load("../Processed_data/HMM_data_and_model_fits.RData")
+load("../Processed_data/bayesmove_model_fits.RData")
+
+dat <- read.csv('../Processed_data/Cleaned_FDN Cmydas tracks.csv')
+dat$Ptt <- as.character(dat$Ptt)
+
+world <- ne_countries(scale = 10, continent = c("North America","South America"),
+                      returnclass = "sf")
+brazil<- ne_countries(scale = 10, country = "Brazil", returnclass = 'sf')
+```
+
+# Introduction
+
+As part of a
+[workshop](https://joshcullen.github.io/Behavior_and_SpaceUse_Workshop)
+that demonstrated and compared how to estimate behavioral states and
+space-use from animal telemetry data, these results will also be used
+for publication. This is particularly important since the focal dataset
+is comprised of high-resolution tracks from adult male green turtles
+(*Chelonia mydas*) breeding at the island of Fernando de Noronha off the
+coast of Brazil. <br><br>
+
+This document serves to summarize the findings from the behavioral state
+portion of the workshop. The tracks analyzed during these analysis
+included both Argos and Fastloc GPS locations within most of the tracked
+turtles. Some basic pre-processing of the tracks was performed, such as
+removing observations with Argos location class (LC) "Z", which are
+considered invalid locations. Additionally, highly aberrant locations
+that were very far from the presumed track (\> 500 km) were also removed
+before any analyses were performed. <br><br>
+
+In addition to the ecological inferences to be made from this analysis,
+another objective of this study is to demonstrate how these inferences
+may differ as a result of model choice. Two of the models used in this
+comparison are common within the field of animal movement ecology (i.e.,
+state-space models, hidden Markov models), while another pair of similar
+methods (i.e., non-parametric Bayesian models) were recently developed
+to account for some of the limitations of hidden Markov models (HMMs).
+Since only the state-space model (SSM) is capable of accounting for
+location error associated with Argos (and Fastloc GPS) locations while
+also estimating behavioral states, all tracks were first processed by
+the SSM before these fitted locations were subsequently used by HMMs and
+the non-parametric Bayesian models (M3/M4) for behavioral state
+estimation.
+
+# The Data
+
+Before getting into the analyses, I'll first provide an overview of what
+this raw dataset looks like. There are a total of 20 tracks of adult
+male green turtles that were breeding at Fernando de Noronha, Brazil,
+which comprised a total sample size of `r nrow(dat)`. Time steps are
+irregular (as is common for air-breathing marine animals), but has an
+average of \~1 hour.
+
+```{r}
+#| label: plot-raw-tracks
+#| fig-cap: Tracks from all 20 adult male green turtles (*Chelonia mydas*) are shown in this map, where tracks have undergone initial cleaning and filtering.
+
+ggplot() +
+    geom_sf(data = world) +
+    geom_path(data = dat, aes(Longitude, Latitude, group = Ptt, color = Ptt), size = 0.25) +
+    scale_color_viridis_d(guide = "none") +
+    theme_bw() +
+    theme(panel.grid = element_blank()) +
+    coord_sf(xlim = c(min(dat$Longitude) - 1, max(dat$Longitude) + 1),
+             ylim = c(min(dat$Latitude) - 1, max(dat$Latitude) + 1))
+```
+
+# The Methods
+
+## State-space model (SSM)
+
+State-space models (SSMs) have proliferated within the field of marine
+ecology, given that animals are typically tagged with transmitters that
+use Argos Doppler-shift geolocation. This method of tracking is
+typically associated with relatively high location errors (\> 1.5 km;
+but sometimes up to 10s of km), which need to be accounted for before
+further analysis. Originally, the Bayesian SSM developed by Ian Jonsen
+and made available through the `bsam` R package was used to estimate
+"true" locations from Argos-only observations at disecrete time steps.
+However, the recent development and release of the `foieGras` package,
+which implements a continuous-time SSM naturally accounts for the
+irregular time steps of these raw data, while also providing the ability
+to make predictions at regular time steps. <br><br>
+
+These SSMs provide the option of also estimating behavioral states as
+well as true locations, which fall on a continuous scale. For the SSM
+within the `bsam` package, it was assumed that animal's switched between
+two different states: one representing a fast, directed *transit* state
+while the other represented a slow, tortuous *area-restricted search
+(ARS)* state. By comparison, the continuous-time correlated random walk
+(CTCRW) SSM in `foieGras` serves as the first step of the analysis,
+followed by analyzing the tracks with a move persistence model that
+estimates behavioral states along a continuum. Therefore, both of these
+methods are limited to the assumption that the researcher is only
+interested in identifying a transit or ARS state, or some value along
+that continuum. While this is a relatively limiting example, other
+methodological approaches are more flexible in the number and type of
+behavioral states that can be estimated. <br><br>
+
+Below is a set of figures that represent a subset of individuals that
+exhibit different movement patterns. These figures compare the raw
+tracks to that of the estimates produced by different parameterizations
+of the SSM. Namely, the time step of the fitted tracks was varied from
+the original irregular time interval, to regularized predictions at 1,
+4, and 8 hour time steps. This was performed to explore the effect of
+coarsening the temporal resolution on the ecological inferences that
+could be made from this high-resolution dataset.
+
+```{r}
+#| label: plot-ssm-results
+#| fig-cap: "Raw (black) and Fitted tracks from the SSM at the irregular time interval (orange), as well as when regularized at 1 (blue), 4 (red), and 8 hour (green) time steps. You'll notice that the modeled tracks all appear to be very similar in terms of the shape of the trajectory."
+
+#### Compare raw tracks vs fitted tracks (for adults tagged at Fernando de Noronha)
+
+# 205537
+ggplot() +
+  geom_sf(data = brazil) +
+  geom_path(data = dat %>% 
+              filter(Ptt == 205537), aes(Longitude, Latitude, group = Ptt), color = 'black') +  #raw tracks
+  geom_path(data = ssm_irreg %>% 
+              filter(id == 205537), aes(lon, lat, group = id), color = "orange") +  #modeled tracks
+  geom_path(data = ssm_1hr %>% 
+              filter(id == 205537), aes(lon, lat, group = id), color = "blue") +  #modeled tracks
+  geom_path(data = ssm_4hr %>% 
+              filter(id == 205537), aes(lon, lat, group = id), color = "red", alpha = 0.7) +  #modeled tracks
+  geom_path(data = ssm_8hr %>% 
+              filter(id == 205537), aes(lon, lat, group = id), color = "green", alpha = 0.7) +  #modeled tracks
+  theme_bw() +
+  coord_sf(xlim = c(-36, -32),
+           ylim = c(-6, -2))
+
+
+# 205540
+ggplot() +
+  geom_sf(data = brazil) +
+  geom_path(data = dat %>% 
+              filter(Ptt == 205540), aes(Longitude, Latitude, group = Ptt), color = 'black') +  #raw tracks
+  geom_path(data = ssm_irreg %>% 
+              filter(id == 205540), aes(lon, lat, group = id), color = "orange") +  #modeled tracks
+  geom_path(data = ssm_1hr %>% 
+              filter(id == 205540), aes(lon, lat, group = id), color = "blue") +  #modeled tracks
+  geom_path(data = ssm_4hr %>% 
+              filter(id == 205540), aes(lon, lat, group = id), color = "red", alpha = 0.7) +  #modeled tracks
+  geom_path(data = ssm_8hr %>% 
+              filter(id == 205540), aes(lon, lat, group = id), color = "green", alpha = 0.7) +  #modeled tracks
+  theme_bw() +
+  coord_sf(xlim = c(-39.5, -32),
+           ylim = c(-4.5, -3))
+
+
+# 205544
+ggplot() +
+  geom_sf(data = brazil) +
+  geom_path(data = dat %>% 
+              filter(Ptt == 205544), aes(Longitude, Latitude, group = Ptt), color = 'black') +  #raw tracks
+  geom_path(data = ssm_irreg %>% 
+              filter(id == 205544), aes(lon, lat, group = id), color = "orange") +  #modeled tracks
+  geom_path(data = ssm_1hr %>% 
+              filter(id == 205544), aes(lon, lat, group = id), color = "blue") +  #modeled tracks
+  geom_path(data = ssm_4hr %>% 
+              filter(id == 205544), aes(lon, lat, group = id), color = "red", alpha = 0.7) +  #modeled tracks
+  geom_path(data = ssm_8hr %>% 
+              filter(id == 205544), aes(lon, lat, group = id), color = "green", alpha = 0.7) +  #modeled tracks
+  theme_bw() +
+  coord_sf(xlim = c(-32.6, -32.3),
+           ylim = c(-4, -3.7))
+
+
+# 226072
+ggplot() +
+  geom_sf(data = brazil) +
+  geom_path(data = dat %>% 
+              filter(Ptt == 226072), aes(Longitude, Latitude, group = Ptt), color = 'black') +  #raw tracks
+  geom_path(data = ssm_irreg %>% 
+              filter(id == 226072), aes(lon, lat, group = id), color = "orange") +  #modeled tracks
+  geom_path(data = ssm_1hr %>% 
+              filter(id == 226072), aes(lon, lat, group = id), color = "blue") +  #modeled tracks
+  geom_path(data = ssm_4hr %>% 
+              filter(id == 226072), aes(lon, lat, group = id), color = "red", alpha = 0.7) +  #modeled tracks
+  geom_path(data = ssm_8hr %>% 
+              filter(id == 226072), aes(lon, lat, group = id), color = "green", alpha = 0.7) +  #modeled tracks
+  theme_bw() +
+  coord_sf(xlim = c(-32.6, -32.3),
+           ylim = c(-4, -3.7))
+
+
+# 41614
+ggplot() +
+  geom_sf(data = brazil) +
+  geom_path(data = dat %>% 
+              filter(Ptt == 41614), aes(Longitude, Latitude, group = Ptt), color = 'black') +  #raw tracks
+  geom_path(data = ssm_irreg %>% 
+              filter(id == 41614), aes(lon, lat, group = id), color = "orange") +  #modeled tracks
+  geom_path(data = ssm_1hr %>% 
+              filter(id == 41614), aes(lon, lat, group = id), color = "blue") +  #modeled tracks
+  geom_path(data = ssm_4hr %>% 
+              filter(id == 41614), aes(lon, lat, group = id), color = "red", alpha = 0.7) +  #modeled tracks
+  geom_path(data = ssm_8hr %>% 
+              filter(id == 41614), aes(lon, lat, group = id), color = "green", alpha = 0.7) +  #modeled tracks
+  theme_bw() +
+  coord_sf(xlim = c(-36, -32),
+           ylim = c(-7, -3.8))
+```
+
+While it appears that the track paths from the SSM are very similar, the
+behavioral state index (via the move persistence parameter $\gamma$) is
+quite different across the different time intervals. The plots shown
+below display the time series of these behavioral state estimates across
+all 20 individuals, where a value close to zero is reflective of an ARS
+behavioral state, whereas values close to 1 indicate a transit state.
+
+```{r}
+#| label: plot-ssm-behav
+#| fig-height: 10
+#| fig-width: 8
+#| fig-cap: "Time series plots of behavioral state index for different time intervals used by the SSM. A noted decrease in signal to noise is apparent as the time step is increased from 1 to 8 hours."
+
+ssm_irreg <- ssm_irreg %>% 
+  mutate(date = as_datetime(date),
+         time.step = "irreg")
+ssm_1hr <- ssm_1hr %>% 
+  mutate(date = as_datetime(date),
+         time.step = "1hr")
+ssm_4hr <- ssm_4hr %>% 
+  mutate(date = as_datetime(date),
+         time.step = "4hr")
+ssm_8hr <- ssm_8hr %>% 
+  mutate(date = as_datetime(date),
+         time.step = "8hr")
+
+all.mods <- rbind(ssm_irreg, ssm_1hr, ssm_4hr, ssm_8hr)
+all.mods$time.step <- factor(all.mods$time.step, levels = c("irreg","1hr","4hr","8hr"))
+
+ggplot() +
+  geom_line(data = all.mods, aes(date, g, color = time.step), alpha = 0.7) +
+  scale_color_manual("Model", values = RColorBrewer::brewer.pal(4, "Dark2")) +
+  theme_bw() +
+  theme(strip.text = element_text(face = "bold"),
+        legend.position = "top") +
+  facet_wrap(~id, scales = "free_x", ncol = 3)
+```
+
+```{r}
+#| label: ssm-behav-map
+#| fig-height: 10
+#| fig-width: 8
+#| fig-cap: 
+#|   - "Plots of the behavioral state index (move persistence) for a subset of **migratory** turtles where results are shown for different time steps."
+#|   - "Plots of the behavioral state index (move persistence) for a subset of **resident** turtles where results are shown for different time steps."
+
+
+sub.tracks.mig <- c(205537, 205540, 41614)
+sub.tracks.res <- c(205544, 226072)
+
+# Migratory
+ggplot(data = all.mods %>% 
+              filter(id %in% sub.tracks.mig), aes(x, y)) +
+  geom_path(alpha = 0.7) +
+  geom_point(aes(color = g)) +
+  scale_color_viridis_c(option = 'inferno') +
+  coord_equal() +
+  theme_bw() +
+  theme(strip.text = element_text(face = "bold"),
+        legend.position = "top") +
+  facet_grid(time.step ~ id)
+
+# Resident
+ggplot(data = all.mods %>% 
+              filter(id %in% sub.tracks.res), aes(x, y)) +
+  geom_path(alpha = 0.7) +
+  geom_point(aes(color = g)) +
+  scale_color_viridis_c(option = 'inferno') +
+  coord_equal() +
+  theme_bw() +
+  theme(strip.text = element_text(face = "bold"),
+        legend.position = "top") +
+  facet_grid(time.step ~ id)
+```
+
+## Hidden Markov model (HMM)
+
+Hidden Markov models are a specific type of SSM that estimate a discrete
+number of behavioral states and assume no (or negligible) location error
+for the tracks. Therefore, HMMs have typically been used within
+terrestrial ecology studies since GPS transmitters (w/ negligible
+location errors) are primarily used, unlike Argos tags that are often
+deployed in marine studies. <br><br>
+
+The use of HMMs allows researchers to choose which variable(s) they
+would like to estimate behavioral states with. While this is often
+performed using step lengths and turning angles, many other types of
+movement variables (or environmental variables) may be used. Typically,
+the greater the number of different variables, the greater chance of
+detecting a greater number of behavioral states. However, it is also
+important that behavioral states be "different enough" from one another,
+otherwise the HMM will have a difficult time distinguishing whether one
+state should actually be split into two separate states or not, for
+example. This also makes it difficult to determine the number of likely
+behavioral states that exist for a given dataset. Often, it is assumed
+that researchers have an *a priori* expectation of the number and type
+of behavioral states that are present, but just wish the model to detect
+when and where they occur via a quantitative approach. However, this is
+not quite as straightforward if researchers are unsure the number of
+states that are possible to detect given the study objectives,
+especially if not much is known about the species or the movement
+patterns of a given life-stage. Therefore, HMMs with different numbers
+of states need to be fitted and then compared using information criteria
+(i.e., AIC, BIC), which may also impose problems. <br><br>
+
+The time step of the dataset is also of great importance. If researchers
+are interested in estimating fine-scale behavioral states, the telemetry
+data must be collected at a fine temporal scale, otherwise this is
+impossible. However, the opposite may be true if researchers are instead
+interested in coarse-scale behaviors, such as migratory patterns. If
+data are collected at a fine temporal scale, it will likely be difficult
+to discern these coarse behavioral patterns as a result of intrinsic
+noise in the analyzed data streams, due to diel patterns or other such
+fine-scale changes in movement. Therefore, the time step of the dataset
+can also impact the differences in the state-dependent distributions and
+the number of likely behavioral states that are possible to detect.
+
+```{r}
+#| label: hmm-state-dep-plot
+#| fig-cap: "State-dependent distributions of the HMM that used step lengths, turning angles, and displacement to estimate behavioral states. Only 2 or 3 states were considered for this dataset given *a priori* expectations, but the 3-state model appeared to perform better in estimating the states, as well as the temporal transitions across states. **These results are shown for the analysis of the fitted track with an 8 hr time step. Results are subject to change for the analysis at the other time steps.**"
+#| fig-subcap: 
+#|   - "Step length"
+#|   - "Turning angle"
+#|   - "Displacement"
+
+plot(fit_hmm_3states_3vars, plotTracks = FALSE, ask = FALSE)
+```
+
+Now that we can see what the state-dependent distributions look like for
+step lengths, turning angles, and displacement, it would be useful to
+also inspect the time series of these behavioral states estimates
+(similar to Fig. 7) and then to map these states in space to determine
+whether they match up with intuition.
+
+```{r}
+#| label: hmm-behav-ts
+#| fig-height: 10
+#| fig-width: 8
+#| fig-cap: "A set of time series plots that evaluate the state transitions and their phenology across individuals. States are broadly named based on the geographic location they take place."
+
+dat_8hr_3$state <- factor(dat_8hr_3$state, levels = c("Breeding","Migratory","Foraging"))
+dat_8hr_3$state2 <- factor(viterbi(fit_hmm_3states_3vars), levels = c(1,3,2))
+levels(dat_8hr_3$state2) <- c("Breeding","Migratory","Foraging")
+
+ggplot() +
+  geom_point(data = dat_8hr_3, aes(date, state2), alpha = 0.3) +
+  theme_bw() +
+  labs(x = "Date", y = "State") +
+  theme(strip.text = element_text(face = "bold")) +
+  facet_wrap(~ID, scales = "free_x", ncol = 3)
+```
+
+```{r}
+#| label: hmm-behav-map
+#| fig-cap: 
+#|   - "Mapped behavioral states from the HMM that estimated 3 behavioral states using 3 data streams for a subset of 3 **migratory** turtles (the same as shown for the SSM results)."
+#|   - "Mapped behavioral states from the HMM that estimated 3 behavioral states using 3 data streams for a subset of 2 **resident** turtles (the same as shown for the SSM results)."
+
+
+# Migratory
+ggplot() +
+  geom_sf(data = brazil) +
+  geom_path(data = dat_8hr_3 %>% 
+              filter(ID %in% sub.tracks.mig), aes(lon, lat, group = ID), alpha = 0.7) +
+  geom_point(data = dat_8hr_3 %>%
+              filter(ID %in% sub.tracks.mig), aes(lon, lat, color = state2), alpha = 0.5) +
+  scale_color_manual("State", values = RColorBrewer::brewer.pal(n = 3, name = "Dark2")) +
+  theme_bw() +
+  theme(strip.text = element_text(face = "bold"),
+        legend.position = "top") +
+  # facet_wrap(~ ID, ncol = 2) +
+  coord_sf(xlim = c(-40, max(dat_8hr_3$lon)),
+             ylim = c(min(dat_8hr_3$lat), max(dat_8hr_3$lat)))
+
+# Resident
+ggplot() +
+  # geom_sf(data = brazil) +
+  geom_path(data = dat_8hr_3 %>% 
+              filter(ID %in% sub.tracks.res), aes(lon, lat, group = ID), alpha = 0.7) +
+  geom_point(data = dat_8hr_3 %>%
+              filter(ID %in% sub.tracks.res), aes(lon, lat, color = state2), alpha = 0.5) +
+  scale_color_manual("State", values = RColorBrewer::brewer.pal(n = 3, name = "Dark2")) +
+  theme_bw() +
+  labs(x = "Longitude", y = "Latitude") +
+  coord_equal()
+  # theme(strip.text = element_text(face = "bold"),
+  #       legend.position = "top") +
+  # facet_wrap(~ ID, ncol = 2) +
+  # coord_sf(xlim = c(-32.46, -32.41),
+  #            ylim = c(-3.885, -3.855)
+  #          )
+
+
+# Calculate duration of migratory period
+forage.start <- dat_8hr_3 %>% 
+  mutate(across(ID, as.character)) %>% 
+  group_by(ID) %>% 
+  filter(state2 == 'Foraging') %>% 
+  dplyr::select(date) %>% 
+  slice(1)
+
+avg.mig.dur <- dat_8hr_3 %>% 
+  mutate(across(ID, as.character)) %>% 
+  filter(state2 == 'Migratory') %>% 
+  split(.$ID) %>% 
+  purrr::map2(.x = ., .y = forage.start$date, ~{.x %>% 
+      filter(date < .y)}
+      ) %>% 
+  bind_rows() %>% 
+  group_by(ID) %>% 
+  summarize(duration = last(date) - first(date)) %>% 
+  ungroup() %>% 
+  summarize(avg = mean(duration))
+```
+
+These results show marked differences in when and where each of these
+behavioral states occur, which reflects prior knowledge of what was
+expected from these tracks. *Breeding* states are only classified while
+at Fernando de Noronha; *Migratory* states almost entirely occur over
+pelagic waters, but are sometimes exhibited during long-ranging coastal
+movements; *Foraging* states only occur at the mainland of Brazil after
+the turtle has settled and exhibits more limited movements. However,
+these movements are slightly faster than those of turtles while at
+Fernando de Noronha. Additionally, migrations from Fernando de Noronha
+started as early as January and as late as July. However, most
+migrations were initiated in late February through early April and
+lasted an average of `r round(avg.mig.dur$avg, 1)` days (range is 5 to
+14 days).
+
+\newpage
+
+## Non-parametric Bayesian models (M3/M4)
+
+While HMMs show some improvements over SSMs (in terms of estimating
+discrete states and flexibly classifying them) despite not being able to
+account for location error, there are still a number of issues that may
+arise when using HMMs to estimate behavioral states. Importantly, the
+movement variables (or data streams) are assumed to be well
+characterized by parametric probability density/mass functions and the
+number of states to be estimated must be specificed for each model
+implementation. However, this can become problematic if there is little
+prior knowledge on the study species to inform the possible number of
+states that could be detected, which is also impacted by the number of
+data streams and the time interval on which they were collected.
+Additionally, if information criteria are used to compare among
+different models to determine the likely number of states, researchers
+may be misled since information criteria such as AIC has been shown to
+favor models with greater numbers of states. When the chosen probability
+functions don't well characterize the data streams being analyzed,
+additional states are often "used to mop of the residual variance" not
+captured by the primary states that were detected. <br><br>
+
+To improve upon some of the limitations of HMMs, a set of non-parametric
+Bayesian methods were recently developed to estimate behavioral states.
+This is performed either using the *mixture model for movement* (M3) to
+cluster observations directly into behavioral states, or first
+segmenting tracks and then clustering these segments into states using
+the *mixed-membership method for movement* (M4). Unlike HMMs, both M3
+and M4 require that the data streams first be discretized into bins
+(similar to a histogram) before analysis, which is expected to improve
+the flexibility of these models. Additionally, a non-parametric Bayesian
+prior (the truncated stick-breaking \[TSB\] prior) is used in both
+methods to determine the likely number of states, which only requires
+the researcher specify the maximum number of states they would like to
+test. <br><br>
+
+The M3 method is very similar to HMMs in that state estimates are made
+at the observation-level. However, there is no Markov property included
+in this method (hence 'mixture model'), which may not capture strong
+levels of temporal autocorrelation in some datasets. Alternatively, the
+M4 method applies a reversible-jump Markov chain Monte Carlo (RJMCMC)
+algorithm to estimate a set of breakpoints that identify relatively
+homogeneous track segments from the selected data streams. These
+segments are then pooled across all analyzed individuals to estimate the
+state-dependent distributions for each data stream, as well as the
+proportion of observations in each segment that belong to one of the
+likely states determined from the TSB prior. While there is no
+autocorrelation term included within the M4 model, it is indirectly
+accounted for since any observations close to each other in time are
+likely similar in their values per data stream and therefore belong to
+the same track segment. Similar to HMMs, the results from these models
+will both be impacted by the time step of the analyzed data streams.
+
+```{r}
+#| label: npbayes-state-dep
+#| fig-width: 8
+#| fig-height: 8
+#| fig-cap: 
+#|   - "State-dependent distributions from the observation-level M3 model."
+#|   - "State-dependent distributions from the segment-level M4 model."
+
+# M3
+behav.res.obs <- behav.res.obs %>% 
+  filter(behav %in% 1:4) %>% 
+  mutate(behav1 = case_when(behav == 1 ~ 'Breeding_Encamped',
+                            behav == 2 ~ 'Breeding_ARS',
+                            behav == 3 ~ 'Foraging',
+                            behav == 4 ~ 'Migratory')) %>% 
+  mutate(across(behav1, factor, levels = c('Breeding_Encamped','Breeding_ARS','Foraging',
+                                           'Migratory')))
+
+ggplot(behav.res.obs, aes(x = bin.vals, y = prop, fill = behav1)) +
+  geom_bar(stat = 'identity') +
+  labs(x = "\nBin", y = "Proportion\n") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 16),
+        axis.text.y = element_text(size = 14),
+        axis.text.x.bottom = element_text(size = 12, angle = 45, vjust = 1, hjust=1),
+        strip.text.x = element_text(size = 14, face = "bold"),
+        strip.text.y = element_text(size = 10)) +
+  scale_fill_viridis_d(guide = 'none') +
+  scale_y_continuous(breaks = c(0.00, 0.50, 1.00)) +
+  facet_grid(behav1 ~ var, scales = "free_x")
+
+
+# M4
+behav.res.seg <- behav.res.seg2 %>%
+  mutate(behav1 = case_when(behav == 1 ~ 'Migratory',
+                           behav == 2 ~ 'Breeding_Encamped',
+                           behav == 3 ~ 'Foraging',
+                           behav == 4 ~ 'Breeding_ARS',
+                           TRUE ~ behav)) %>%
+  filter(!behav %in% c(8,9)) %>%
+  mutate(across(behav1, factor, levels = c('Breeding_Encamped','Breeding_ARS','Foraging',
+                                           'Migratory')))
+
+
+ggplot(behav.res.seg, aes(x = bin.vals, y = prop, fill = behav1)) +
+  geom_bar(stat = 'identity') +
+  labs(x = "\nBin", y = "Proportion\n") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 16),
+        axis.text.y = element_text(size = 14),
+        axis.text.x.bottom = element_text(size = 12, angle = 45, vjust = 1, hjust=1),
+        strip.text.x = element_text(size = 14, face = "bold"),
+        strip.text.y = element_text(size = 10)) +
+  scale_fill_viridis_d(guide = 'none') +
+  scale_y_continuous(breaks = c(0.00, 0.50, 1.00)) +
+  facet_grid(behav1 ~ var, scales = "free_x")
+```
+
+Despite these two methods taking different general approaches to
+estimating the behavioral states (observation- vs segment-level) and the
+use of slightly different binning methods for the data streams, the same
+states were identified albeit with slightly different distributions. The
+M4 method has more distinct distributions compared to M3 based on
+displacement from the tagging location in Fernando de Noronha, which
+matches up better with how we're trying to define these state
+transitions over time (e.g., turtles can only exhibit a breeding state
+while at FDN and can only be in a foraging state if they were previously
+in a migratory state). This is seen where the *Breeding_Encamped* and
+*Breeding_ARS* states also have some observations that shows
+displacements away from the island (bins 2-4). Therefore, the results
+from the M4 model are likely more reliable for this particular analysis.
+Now, let's compare the time series of these state estimates, as well as
+the spatial locations of these state assignments.
+
+```{r}
+#| label: npbayes-state-ts
+#| fig-height: 10
+#| fig-width: 8
+#| fig-cap: 
+#|   - "A set of time series plots that evaluate the state transitions and their phenology across individuals. States are broadly named based on the geographic location they take place. State estimates are based on the state that was assigned to each observation most frequently in the posterior distribution."
+#|   - "Time series plots that display the proportion of behavioral states within each estimated track segment per individual."
+
+# M3
+dat.states2$z.post.max <- ordered(dat.states2$z.post.max,
+                                  levels = c('Breeding_Encamped','Breeding_ARS',
+                                             'Migratory', 'Foraging','Unclassified')
+                                  )
+
+ggplot() +
+  geom_point(data = dat.states2, aes(date, z.post.max), alpha = 0.3) +
+  theme_bw() +
+  labs(x = "Date", y = "State") +
+  theme(strip.text = element_text(face = "bold")) +
+  facet_wrap(~id, scales = "free_x", ncol = 3)
+
+
+# M4
+ggplot(theta.estim.long) +
+  geom_area(aes(x=date, y=prop, fill = behavior), color = "black", size = 0.25,
+            position = "fill") +
+  labs(x = "\nDate", y = "Proportion of Behavior\n") +
+  scale_fill_viridis_d("Behavior") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 16),
+        axis.text.y = element_text(size = 14),
+        axis.text.x.bottom = element_text(size = 12),
+        strip.text = element_text(size = 14, face = "bold"),
+        panel.grid = element_blank(),
+        legend.position = "top") +
+  facet_wrap(~id, scales = "free_x")
+```
+
+After looking at these time series plots, it seems obvious that the M3
+model struggles to properly assign these states to each observation
+given the context of time. However, the M4 model performs much better by
+comparison, likely because it is able to indirectly account for temporal
+autocorrelation in behavioral states and the phenology of these changes.
+**It is important to emphasize that just because the M3 model did not
+perform well in this particular instance that it performs poorly in
+general. It is possible that the analysis of a different time step for
+the same dataset (or a different dataset altogether) would be better
+estimated by the M3 method. This is particularly true when behavioral
+states change in rapid succession and therefore exhibit less temporal
+autocorrelation.** Even though we won't be making inferences from the M3
+results, let's compare spatially how these states are assigned with that
+of the M4 model.
+
+```{r}
+#| label: npbayes-state-map
+#| fig-cap: 
+#|   - "**M3 results** for subset of **migratory** turtles."
+#|   - "**M3 results** for subset of **resident** turtles."
+#|   - "**M4 results** for subset of **migratory** turtles."
+#|   - "**M4 results** for subset of **resident** turtles."
+
+## M3
+dat.states2$z.post.max <- ordered(dat.states2$z.post.max,
+                                  levels = c('Breeding_Encamped','Breeding_ARS',
+                                             'Foraging', 'Migratory','Unclassified')
+                                  )
+
+# Migratory
+ggplot() +
+  geom_sf(data = brazil) +
+  geom_path(data = dat.states2 %>% 
+              filter(id %in% sub.tracks.mig), aes(lon, lat, group = id), alpha = 0.7) +
+  geom_point(data = dat.states2 %>%
+              filter(id %in% sub.tracks.mig), aes(lon, lat, color = z.post.max), alpha = 0.5) +
+  scale_color_manual("State", values = c(viridis::viridis(n = 4), "grey")) +
+  theme_bw() +
+  theme(strip.text = element_text(face = "bold"),
+        legend.position = "top") +
+  coord_sf(xlim = c(-40, max(dat_8hr_3$lon)),
+             ylim = c(min(dat_8hr_3$lat), max(dat_8hr_3$lat)))
+
+# Resident
+ggplot() +
+  geom_path(data = dat.states2 %>% 
+              filter(id %in% sub.tracks.res), aes(lon, lat, group = id), alpha = 0.7) +
+  geom_point(data = dat.states2 %>%
+              filter(id %in% sub.tracks.res), aes(lon, lat, color = z.post.max), alpha = 0.5) +
+  scale_color_manual("State", values = c(viridis::viridis(n = 4), "grey")) +
+  theme_bw() +
+  labs(x = "Longitude", y = "Latitude") +
+  coord_equal()
+
+
+## M4
+# Migratory
+ggplot() +
+  geom_sf(data = brazil) +
+  geom_path(data = dat.out %>% 
+              filter(id %in% sub.tracks.mig), aes(lon, lat, group = id), alpha = 0.7) +
+  geom_point(data = dat.out %>%
+              filter(id %in% sub.tracks.mig), aes(lon, lat, color = behav), alpha = 0.5) +
+  scale_color_viridis_d("State") +
+  theme_bw() +
+  theme(strip.text = element_text(face = "bold"),
+        legend.position = "top") +
+  coord_sf(xlim = c(-40, max(dat_8hr_3$lon)),
+             ylim = c(min(dat_8hr_3$lat), max(dat_8hr_3$lat)))
+
+# Resident
+ggplot() +
+  geom_path(data = dat.out %>% 
+              filter(id %in% sub.tracks.res), aes(lon, lat, group = id), alpha = 0.7) +
+  geom_point(data = dat.out %>%
+              filter(id %in% sub.tracks.res), aes(lon, lat, color = behav), alpha = 0.5) +
+  scale_color_viridis_d("State") +
+  theme_bw() +
+  labs(x = "Longitude", y = "Latitude") +
+  coord_equal()
+```
+
+As we can see in these maps, the behavioral state assignments are much
+'cleaner' looking and appear to make more sense for the M4 model
+results. These behavioral state estimates resemble that from the HMM,
+except that the M4 model determined that 4 states were most likely
+(instead of 3 from the HMM). This provides a useful example where
+practitioners may not be aware of the number of different states they
+can detect from their data beforehand.
+
+# Method Comparison
+
+It is difficult to directly compare the results from each of the three
+methods used here since they provided quite different outcomes.
+<br><br>
+
+The SSM provided behavioral state estimates on a continuous scale between what
+is considered an *ARS* state and a *transit* state. This allowed for a
+gradient of possible outcomes, but this also made it much more difficult
+to determine what the turtles were doing, especially for short time
+intervals. Ultimately, the regularized 8 hr time step appeared to
+provide the best estimates for evaluating when the adult male green
+turtles were resident to Fernando de Noronha, their migratory period,
+and settlement at distant foraging grounds for those that migrated.
+These fitted tracks were used for subsequent behavioral state estimation
+by the HMM and M3/M4 methods since the latter do not account for
+location error.
+<br><br>
+
+The HMM estimated a discrete set of behavioral states, but much information was need to be specified by the practitioner up front, such as the probability density functions, good starting values for the model parameters, and the number of states to be estimated. When done properly based on domain-specific knowledge of the species and what might be possible with the data streams included in the analysis, this method provides great insight into what these animals are doing over time. The 3-state HMM that included step length, turning angle, and displacement appeared to best fit the data and provided estimates over space and time that matched up with biological intuition. Given that this model estimates discrete states, it would be easier to use these in subsequent steps if estimating state-dependent space-use, habitat selection, or connectivity. Additionally, the state-dependent distributions estimated by the HMM provides greater insight as to **what** the animals are doing rather than a single derived metric that is difficult to critically evaluate.
+<br><br>
+
+The non-parametric Bayesian M3 and M4 models built upon some of the potential limitations of HMMs, but required researchers to discretize their data streams before analysis. Both M3 and M4 models estimated 4 states as most likely to occur for the 8 hr regularized tracks, which was not even tested for the HMM. However, the M3 model (tht uses a mixture model) did not account for any temporal structure in the data and therefore performed objectively worse than the HMM and M4 methods on this particular dataset. The M4 method identified distinct behavioral shifts over time for the migratory individuals, where some of the estimated track segments were likely comprised of one or two behavioral states. As with the HMM, state-dependent distributions provide insight as to how these states are defined and the states mapped over space appear to match up with biological knowledge of the species.
+<br><br>
+
+To nonw make ecological inferences based on these results (from the M4 method), it appears that 5 of the 20 tagged individuals remained resident to Fernando de Noronha for their entire tracking period, exhibiting only the *Breeding_Encamped* and/or *Breeding_ARS* states. The remaining 75% of tracked individuals quickly migrated to foraging grounds at the mainland, where migratory periods lasted from 5 days to 2 weeks up to distances from 300 to > 1000 km away from Fernando de Noronha. All migrations ultimately terminated at the mainland in the foraging state, where some individuals exhibited relatively fast, directed movements to a different foraging state after intial settlement. This analysis finds that much of the northern coast of Brazil serves as foraging grounds for these post-breeding males from Fernando de Noronha and that the entire region between the island and mainland serves as a broad corridor for migration primarily during the period from late February through early April.
