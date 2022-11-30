@@ -59,7 +59,8 @@ plot(dat_8hr_2)
 ###############################
 
 
-#### Fit HMM for 3 states using step lengths, turning angles, and displacement ####
+
+#### Fit HMM for 2 states using step lengths and turning angles ####
 
 # Calculate displacement manually
 calc_disp <- function(data, x, y) {
@@ -94,6 +95,37 @@ ggplot(dat_1hr_3, aes(date, angle)) +
   facet_wrap(~ID, scales = "free")
 
 
+
+
+# initial step distribution natural scale parameters
+sum(dat_1hr_3$step == 0)  #check if any SL equal to 0
+stepPar0 <- c(0.2, 3, 0.2, 1) # (mu_1, mu_2, sd_1, sd_2)
+
+# initial angle distribution natural scale parameters
+anglePar0 <- c(0, 0, 0.2, 0.99) # (mean_1, mean_2, concentration_1, concentration_2)
+
+
+
+set.seed(123)  #if states get flipped, try adjusting initial params or random seed number (e.g., seed 2022 gave problems w/ flipped states)
+tic()
+fit_1hr_2states <- fitHMM(data = dat_1hr_3,
+                          nbStates = 2,
+                          dist = list(step = "gamma", angle = "wrpcauchy"),
+                          Par0 = list(step = stepPar0, angle = anglePar0),
+                          formula = ~ 1,
+                          estAngleMean = list(angle=TRUE),
+                          stateNames = c('ARS', 'Migratory'),
+                          retryFits = 0)  #may be necessary to run more fits
+toc()  #took 45 min to run
+
+fit_1hr_2states
+plot(fit_1hr_2states)
+plotPR(fit_1hr_2states, ncores = 5)  #plot of pseudo-residuals look pretty good besides ACF
+
+
+
+
+#### Fit HMM for 3 states using step lengths, turning angles, and displacement ####
 
 # Pre-define states to set "good" initial values
 dat_1hr_3 <- dat_1hr_3 %>%

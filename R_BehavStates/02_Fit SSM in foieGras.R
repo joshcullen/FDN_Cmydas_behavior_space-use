@@ -10,6 +10,8 @@ library(sf)  #v1.0.7
 library(rnaturalearth)
 library(tictoc)
 library(plotly)
+library(future)
+library(patchwork)
 
 
 #### Load data ####
@@ -190,11 +192,19 @@ res_crw_fitted %>%
 
 
 # Check model fit w/ diagnostic "one-step-ahead residuals"; takes long time!
-# diag_crw <- osar(fit_crw_fitted)
-#
-# plot(diag_crw, type = "ts")  #time series of residuals
-# plot(diag_crw, type = "qq")  #Q-Q plot
-# plot(diag_crw, type = "acf")  #Autocorrelation function plot
+tic()
+gof_irreg <- osar(fit_crw_fitted)
+toc()  # takes ~x hrs to run
+
+
+par(ask = TRUE)
+for (k in unique(gof_irreg$id)) {
+  tmp <- gof_irreg %>%
+    filter(id == k)
+  print((plot(tmp, type = "ts") | plot(tmp, type = "qq")) /
+          (plot(tmp, type = "acf") | plot_spacer()))
+}
+par(ask = FALSE)
 
 
 
@@ -228,6 +238,24 @@ print(fit_crw_mpm_1hr)  #all models converged
 plot(fit_crw_mpm_1hr)
 
 
+# Check GOF
+tic()
+gof_1hr <- osar(fit_crw_1hr)
+toc()  # takes ~x hrs to run
+
+
+par(ask = TRUE)
+for (k in unique(gof_1hr$id)) {
+  tmp <- gof_1hr %>%
+    filter(id == k)
+  print((plot(tmp, type = "ts") | plot(tmp, type = "qq")) /
+          (plot(tmp, type = "acf") | plot_spacer()))
+}
+par(ask = FALSE)
+
+
+
+
 
 ### Estimate 'true' locations on regular sampling interval of 4 hrs ###
 tic()
@@ -254,6 +282,23 @@ toc()  #took 42 sec to fit
 
 print(fit_crw_mpm_4hr)  #all models converged
 plot(fit_crw_mpm_4hr)
+
+
+
+# Check GOF
+tic()
+gof_4hr <- osar(fit_crw_4hr)
+toc()  # takes ~x hrs to run
+
+
+par(ask = TRUE)
+for (k in unique(gof_4hr$id)) {
+  tmp <- gof_4hr %>%
+    filter(id == k)
+  print((plot(tmp, type = "ts") | plot(tmp, type = "qq")) /
+          (plot(tmp, type = "acf") | plot_spacer()))
+}
+par(ask = FALSE)
 
 
 
@@ -284,6 +329,22 @@ toc()  #took 35 sec to fit
 
 print(fit_crw_mpm_8hr)
 plot(fit_crw_mpm_8hr)
+
+# Check GOF
+tic()
+gof_8hr <- osar(fit_crw_8hr)
+toc()  # takes ~3 hrs to run
+
+
+par(ask = TRUE)
+for (k in unique(gof_8hr$id)) {
+  tmp <- gof_8hr %>%
+    filter(id == k)
+  print((plot(tmp, type = "ts") | plot(tmp, type = "qq")) /
+    (plot(tmp, type = "acf") | plot_spacer()))
+}
+par(ask = FALSE)
+
 
 
 
