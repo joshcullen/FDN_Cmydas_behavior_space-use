@@ -109,7 +109,7 @@ dat3$id <- as.character(dat3$id)
 tic()
 fit_crw_fitted <- fit_ssm(dat3, vmax = 3, model = "crw", time.step = NA,
                           control = ssm_control(verbose = 1))
-toc()  #took 2 min where time.step = NA
+toc()  #took 1 min where time.step = NA
 
 print(fit_crw_fitted)  #all indiv. models converged
 
@@ -194,7 +194,7 @@ res_crw_fitted %>%
 # Check model fit w/ diagnostic "one-step-ahead residuals"; takes long time!
 tic()
 gof_irreg <- osar(fit_crw_fitted)
-toc()  # takes ~x hrs to run
+toc()  # takes ~1.7 hrs to run
 
 
 par(ask = TRUE)
@@ -215,7 +215,7 @@ par(ask = FALSE)
 tic()
 fit_crw_1hr <- fit_ssm(dat3, vmax = 3, model = "crw", time.step = 1,
                        control = ssm_control(verbose = 1))
-toc()  #took 3.5 min to fit model
+toc()  #took 2 min to fit model
 
 print(fit_crw_1hr)  #all models converged
 
@@ -241,7 +241,7 @@ plot(fit_crw_mpm_1hr)
 # Check GOF
 tic()
 gof_1hr <- osar(fit_crw_1hr)
-toc()  # takes ~x hrs to run
+toc()  # takes 2.5 hrs to run
 
 
 par(ask = TRUE)
@@ -261,7 +261,7 @@ par(ask = FALSE)
 tic()
 fit_crw_4hr <- fit_ssm(dat3, vmax = 3, model = "crw", time.step = 4,
                        control = ssm_control(verbose = 1))
-toc()  #took 2.5 min to fit model
+toc()  #took 73 sec to fit model
 
 print(fit_crw_4hr)  #all models converged
 
@@ -288,7 +288,7 @@ plot(fit_crw_mpm_4hr)
 # Check GOF
 tic()
 gof_4hr <- osar(fit_crw_4hr)
-toc()  # takes ~x hrs to run
+toc()  # takes 1.9 hrs to run
 
 
 par(ask = TRUE)
@@ -308,7 +308,7 @@ par(ask = FALSE)
 tic()
 fit_crw_8hr <- fit_ssm(dat3, vmax = 3, model = "crw", time.step = 8,
                           control = ssm_control(verbose = 1))
-toc()  #took 2.5 min to fit model
+toc()  #took 1 min to fit model
 
 print(fit_crw_8hr)  #all models converged
 
@@ -333,7 +333,7 @@ plot(fit_crw_mpm_8hr)
 # Check GOF
 tic()
 gof_8hr <- osar(fit_crw_8hr)
-toc()  # takes ~3 hrs to run
+toc()  # takes ~1.8 hrs to run
 
 
 par(ask = TRUE)
