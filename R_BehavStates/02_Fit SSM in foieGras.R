@@ -12,6 +12,9 @@ library(tictoc)
 library(plotly)
 library(future)
 library(patchwork)
+library(ggspatial)
+library(wesanderson)
+
 
 
 #### Load data ####
@@ -469,7 +472,60 @@ ggplot() +
 
 
 
+### Fig 1 for manuscript
 
+
+pal1 <- c(wes_palettes$Darjeeling1,
+          wes_palettes$Darjeeling2,
+          wes_palettes$Cavalcanti1,
+          wes_palettes$Rushmore1)
+
+tracks.plot <- ggplot() +
+  geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
+  geom_path(data = res_crw_fitted, aes(lon, lat, group = id, color = id), size = 0.75, alpha = 0.8) +
+  scale_color_manual(values = pal1, guide = "none") +
+  labs(x = "Longitude", y = "Latitude") +
+  annotate(geom = "text", label = "Brazil", x = -37, y = -6, size = 12) +
+  annotate(geom = "text", label = "Fernando de Noronha", x = -32.75, y = -3.5, size = 3) +
+  annotation_scale(location = "bl", width_hint = 0.5, style = "ticks",
+                   line_col = "black", text_col = "black", line_width = 1.5,
+                   text_cex = 1) +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 14)) +
+  coord_sf(xlim = c(-42, -32), ylim = c(-8, -2))
+
+
+# background for the globe - center buffered by earth radius
+ocean <- st_point(x = c(0,0)) %>%
+  st_buffer(dist = 6371000) %>%
+  st_sfc(crs = "+proj=ortho +lat_0=-5 +lon_0=-36 +x_0=0 +y_0=0 +R=6371000 +units=m +no_defs +type=crs")
+
+# country polygons, cut to size
+world <- gisco_countries %>%
+  st_intersection(ocean %>% st_transform(4326)) %>% # select visible area only
+  st_transform(crs = "+proj=ortho +lat_0=-5 +lon_0=-36 +x_0=0 +y_0=0 +R=6371000 +units=m +no_defs +type=crs")
+
+# create bbox for tracks
+bbox <- st_sfc(st_point(c(-42, -8)), st_point(c(-32, -2)), crs = 4326) %>%
+  st_bbox() %>%
+  st_as_sfc() %>%
+  st_transform(crs = "+proj=ortho +lat_0=-5 +lon_0=-36 +x_0=0 +y_0=0 +R=6371000 +units=m +no_defs +type=crs")
+
+# create inset map
+inset.plot <- ggplot(data = world) +
+  geom_sf(data = ocean, fill = "aliceblue", color = NA) + # background first
+  geom_sf(lwd = 0.1) + # now land over the oceans
+  geom_sf(data = bbox, fill = "transparent", color = "red", size = 1) +
+  coord_sf(expand = FALSE) +
+  theme_void()
+
+
+tracks.plot +
+  inset_element(inset.plot, left = 0, bottom = 0.15, right = 0.45, top = 0.55, align_to = "plot")
+
+# ggsave("Figures/Fig 1.png", width = 8, height = 6, units = "in", dpi = 400)
 
 
 ### Export fitted tracks ###
