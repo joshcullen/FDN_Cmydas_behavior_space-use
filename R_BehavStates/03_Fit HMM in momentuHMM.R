@@ -9,6 +9,9 @@ library(momentuHMM)  #v1.5.4
 library(sf)  #v1.0.7
 library(tictoc)
 library(plotly)
+library(rnaturalearth)
+library(MetBrewer)
+library(patchwork)
 
 source("R_BehavStates/helper functions.R")
 
@@ -245,6 +248,10 @@ plotPR(fit_1hr_3states, ncores = 5)  #look decent for SL and TA, but Disp could 
 AIC(fit_1hr_2states, fit_1hr_3states)  #3 state model is better; consistent w/ state-dependent distributions and mapped states
 
 
+dat_1hr_3$state <- viterbi(fit_1hr_3states)
+dat_1hr_3$state <- factor(dat_1hr_3$state, levels = c(1,3,2))
+levels(dat_1hr_3$state) <- c("Breeding","Migratory","Foraging")
+
 
 
 
@@ -453,6 +460,10 @@ plotPR(fit_4hr_3states, ncores = 5)  # results look okay, but not great; qqplot 
 
 AIC(fit_4hr_2states, fit_4hr_3states)  #3 state model is better; consistent w/ state-dependent distributions and mapped states
 
+
+dat_4hr_3$state <- viterbi(fit_4hr_3states)
+dat_4hr_3$state <- factor(dat_4hr_3$state, levels = c(1,3,2))
+levels(dat_4hr_3$state) <- c("Breeding","Migratory","Foraging")
 
 
 
@@ -664,15 +675,138 @@ plotPR(fit_8hr_3states, ncores = 5)  # results look okay, but not great; qqplot 
 
 
 
-
 #### Compare between models ####
 
 AIC(fit_8hr_2states, fit_8hr_3states)  #3 state model is better; consistent w/ state-dependent distributions and mapped states
 
 
+# Add state estimate to dataset
+dat_8hr_3$state <- viterbi(fit_8hr_3states)
+dat_8hr_3$state <- factor(dat_8hr_3$state, levels = c(1,3,2))
+levels(dat_8hr_3$state) <- c("Breeding","Migratory","Foraging")
+
+
+
+
+
+
+############################
+### Fig 3 for manuscript ###
+############################
+
+# load spatial layer of brazil
+brazil<- ne_countries(scale = 10, country = "Brazil", returnclass = 'sf')
+
+# generate sequence for x axis of density functions
+step.seq <- seq(0, max(dat_8hr_3$step, na.rm = TRUE), length = 500)
+angle.seq <- seq(-pi, pi, length = 500)
+disp.seq <- seq(0, max(dat_8hr_3$disp, na.rm = TRUE), length = 500)
+
+# functions to calculate shape and scale of the gamma distributions from mean and sd
+sh <- function(mean, sd) { return(mean^2 / sd^2)}
+sc <- function(mean, sd) { return(sd^2 / mean)}
+
+# get density functions of the distributions
+step_state.dep.dist <- apply(fit_8hr_3states$mle$step, 2,
+                             function(x) dgamma(step.seq, shape = sh(x[1], x[2]),
+                                                scale = sc(x[1], x[2]))
+) %>%
+  cbind(., step.seq) %>%
+  data.frame() %>%
+  pivot_longer(cols = -step.seq, names_to = "state", values_to = "density") %>%
+  rename(x = step.seq) %>%
+  mutate(var = 'Step Length (km)')
+
+angle_state.dep.dist <- apply(fit_8hr_3states$mle$angle, 2,
+                              function(x) circular::dwrappedcauchy(angle.seq, mu = x[1], rho = x[2])
+) %>%
+  cbind(., angle.seq) %>%
+  data.frame() %>%
+  pivot_longer(cols = -angle.seq, names_to = "state", values_to = "density") %>%
+  rename(x = angle.seq) %>%
+  mutate(var = 'Turning Angle (rad)')
+
+disp_state.dep.dist <- apply(fit_8hr_3states$mle$disp, 2,
+                             function(x) dgamma(disp.seq, shape = sh(x[1], x[2]),
+                                                scale = sc(x[1], x[2]))
+) %>%
+  cbind(., disp.seq) %>%
+  data.frame() %>%
+  pivot_longer(cols = -disp.seq, names_to = "state", values_to = "density") %>%
+  rename(x = disp.seq) %>%
+  mutate(var = 'Displacement (km)')
+
+
+state.dep.dist <- rbind(step_state.dep.dist, angle_state.dep.dist, disp_state.dep.dist)
+state.dep.dist$var <- factor(state.dep.dist$var, levels = c("Step Length (km)", "Turning Angle (rad)",
+                                                            "Displacement (km)"))
+
+
+# plot state-dependent distributions
+state.dep.plot <- ggplot() +
+  geom_line(data = state.dep.dist, aes(x = x, y = density, colour = state), size=1) +
+  scale_color_manual('', values = MetPalettes$Egypt[[1]][c(1,3,4)]) +
+  labs(x = "", y = "Density") +
+  theme_bw() +
+  theme(legend.text = element_text(size = 14),
+        legend.position = "top",
+        panel.grid = element_blank(),
+        axis.text = element_text(size = 14),
+        axis.title.y = element_text(size = 18),
+        strip.text = element_text(size = 16),
+        strip.background = element_blank(),
+        strip.placement = "outside") +
+  facet_wrap(~ var, scales = "free", strip.position = "bottom")
+
+
+
+# plot time-series of state estimates per ID
+all.fits <- list(`1 hr` = dat_1hr_3,
+                 `4 hr` = dat_4hr_3,
+                 `8 hr` = dat_8hr_3) %>%
+  bind_rows(.id = 'time.step')
+
+
+behav.ts.plot <- ggplot() +
+  geom_point(data = all.fits %>%
+               filter(ID %in% c(205540, 41614)), aes(date, state, color = state), alpha = 0.3) +
+  scale_color_manual('', values = MetPalettes$Egypt[[1]][c(1,4,3)], guide = "none") +
+  theme_bw() +
+  labs(x = "Date", y = "State") +
+  theme(strip.text = element_text(face = "bold", size = 10),
+        panel.grid = element_blank(),
+        axis.title = element_text(size = 16),
+        axis.text = element_text(size = 12)) +
+  facet_grid(time.step ~ ID, scales = "free_x")
+
+
+
+behav.map <- ggplot() +
+  geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
+  geom_path(data = all.fits %>%
+              filter(ID %in% c(205540, 41614)), aes(lon, lat), alpha = 0.7) +
+  geom_point(data = all.fits %>%
+               filter(ID %in% c(205540, 41614)), aes(lon, lat, color = state)) +
+  scale_color_manual('', values = MetPalettes$Egypt[[1]][c(1,4,3)], guide = "none") +
+  coord_sf(xlim = c(-40, -32), ylim = c(-7, -3)) +
+  labs(x = "Longitude", y = "Latitude") +
+  theme_bw() +
+  theme(strip.text = element_text(face = "bold", size = 10),
+        legend.position = "top",
+        panel.grid = element_blank(),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 10),
+        legend.title = element_text(size = 16)) +
+  facet_grid(time.step ~ ID)
+
+
+state.dep.plot / (behav.ts.plot + behav.map) + plot_annotation(tag_levels = 'a', tag_suffix = ')')
+
+# ggsave("Figures/Fig 3.png", width = 10, height = 7, units = "in", dpi = 400)
+
 
 
 #### Export datasets for easy loading ####
 
-save(dat_1hr_3, dat_4hr_3, dat_8hr_3, fit_1hr_3states, fit_4hr_3states, fit_8hr_3states,
-     file = "Processed_data/HMM_data_and_model_fits.RData")
+# save(dat_1hr_3, dat_4hr_3, dat_8hr_3, fit_1hr_3states, fit_4hr_3states, fit_8hr_3states,
+#      file = "Processed_data/HMM_data_and_model_fits.RData")

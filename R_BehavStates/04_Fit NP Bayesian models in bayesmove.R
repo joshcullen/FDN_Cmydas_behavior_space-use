@@ -12,6 +12,8 @@ library(rnaturalearth)
 library(plotly)
 library(furrr)
 library(future)
+library(patchwork)
+library(MetBrewer)
 
 
 #### Load data ####
@@ -1232,11 +1234,106 @@ dat.out.8hr %>%
 
 
 
+############################
+### Fig 4 for manuscript ###
+############################
+
+# load spatial layer of brazil
+brazil<- ne_countries(scale = 10, country = "Brazil", returnclass = 'sf')
+
+
+# plot state-dependent distributions
+behav.res.seg <- behav.res.seg.8hr2 %>%
+  mutate(behav1 = case_when(behav == 1 ~ 'Migratory',
+                            behav == 2 ~ 'Breeding_ARS',
+                            behav == 3 ~ 'Breeding_Encamped',
+                            behav == 4 ~ 'Foraging',
+                            TRUE ~ behav)) %>%
+  filter(!behav %in% c(8,9)) %>%
+  mutate(across(behav1, factor, levels = c('Breeding_Encamped','Breeding_ARS','Foraging',
+                                           'Migratory'))) %>%
+  mutate(across(var, factor))
+levels(behav.res.seg$var) <- c("Displacement (km)", "Step Length (km)", "Turning Angle (rad)")
+
+state.dep.plot <- ggplot(behav.res.seg, aes(x = bin.vals, y = prop, fill = behav1)) +
+  geom_bar(stat = 'identity', position = "dodge") +
+  labs(x = "", y = "Proportion") +
+  theme_bw() +
+  theme(legend.text = element_text(size = 14),
+        legend.position = "top",
+        panel.grid = element_blank(),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_text(size = 14),
+        axis.text.x.bottom = element_text(size = 12, angle = 45, vjust = 1, hjust=1),
+        strip.text = element_text(size = 16),
+        strip.background = element_blank(),
+        strip.placement = "outside") +
+  scale_fill_manual('', values = MetPalettes$Egypt[[1]]) +
+  scale_y_continuous(breaks = c(0.00, 0.50, 1.00)) +
+  facet_wrap(~ var, scales = "free_x", strip.position = "bottom")
+
+
+
+# plot time series of behavior proportions
+
+theta.estim.long <- list(`1 hr` = theta.estim.long.1hr,
+                         `4 hr` = theta.estim.long.4hr,
+                         `8 hr` = theta.estim.long.8hr) %>%
+  bind_rows(.id = 'time.step')
+
+behav.ts.plot <- ggplot(theta.estim.long %>%
+         filter(id %in% c(205540, 41614))) +
+  geom_area(aes(x = date, y = prop, fill = behavior), color = "black", size = 0.25,
+            position = "fill") +
+  labs(x = "Date", y = "Probability of Behavior") +
+  scale_fill_manual('',
+                    values = c(MetPalettes$Egypt[[1]][1:2], "black", MetPalettes$Egypt[[1]][3:4])) +
+  theme_bw() +
+  theme(axis.title = element_text(size = 16),
+        axis.text.y = element_text(size = 14),
+        axis.text.x.bottom = element_text(size = 12),
+        strip.text = element_text(size = 14, face = "bold"),
+        panel.grid = element_blank(),
+        legend.position = "top") +
+  facet_grid(time.step ~ id, scales = "free_x")
+
+
+# map behavioral states for focal IDs
+dat.out <- list(`1 hr` = dat.out.1hr,
+                `4 hr` = dat.out.4hr,
+                `8 hr` = dat.out.8hr) %>%
+  bind_rows(.id = 'time.step')
+
+
+behav.map <- ggplot() +
+  geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
+  geom_path(data = dat.out %>%
+              filter(id %in% c(205540, 41614)), aes(lon, lat), alpha = 0.7) +
+  geom_point(data = dat.out %>%
+               filter(id %in% c(205540, 41614)), aes(lon, lat, color = behav)) +
+  scale_color_manual('', values = MetPalettes$Egypt[[1]], guide = "none") +
+  coord_sf(xlim = c(-40, -32), ylim = c(-7, -3)) +
+  labs(x = "Longitude", y = "Latitude") +
+  theme_bw() +
+  theme(strip.text = element_text(face = "bold", size = 10),
+        legend.position = "top",
+        panel.grid = element_blank(),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 10),
+        legend.title = element_text(size = 16)) +
+  facet_grid(time.step ~ id)
+
+
+state.dep.plot / (behav.ts.plot + behav.map) + plot_annotation(tag_levels = 'a', tag_suffix = ')')
+
+# ggsave("Figures/Fig 4.png", width = 12, height = 8, units = "in", dpi = 400)
+
+
 #### Export datasets for easy loading ####
 
-save(dat.res.segclust.1hr, dat.res.segclust.4hr, dat.res.segclust.8hr,
-     behav.res.seg.1hr2, behav.res.seg.4hr2, behav.res.seg.8hr2,
-     theta.estim.long.1hr, theta.estim.long.4hr, theta.estim.long.8hr,
-     dat.out.1hr, dat.out.4hr, dat.out.8hr,
-     file = "Processed_data/bayesmove_model_fits.RData")
+# save(dat.res.segclust.1hr, dat.res.segclust.4hr, dat.res.segclust.8hr,
+#      behav.res.seg.1hr2, behav.res.seg.4hr2, behav.res.seg.8hr2,
+#      theta.estim.long.1hr, theta.estim.long.4hr, theta.estim.long.8hr,
+#      dat.out.1hr, dat.out.4hr, dat.out.8hr,
+#      file = "Processed_data/bayesmove_model_fits.RData")
 

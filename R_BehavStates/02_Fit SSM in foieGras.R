@@ -471,9 +471,9 @@ ggplot() +
 ## Estimated tracks are comparable across all time steps
 
 
-
-### Fig 1 for manuscript
-
+############################
+### Fig 1 for manuscript ###
+############################
 
 pal1 <- c(wes_palettes$Darjeeling1,
           wes_palettes$Darjeeling2,
@@ -528,9 +528,73 @@ tracks.plot +
 # ggsave("Figures/Fig 1.png", width = 8, height = 6, units = "in", dpi = 400)
 
 
+
+
+
+
+############################
+### Fig 2 for manuscript ###
+############################
+
+# Show time series of move persistence param (gamma) at different time steps next to maps of mapped states
+# Use 1 example of migratory ID (205540) and resident ID (205544)
+
+
+res_crw_fitted <- res_crw_fitted %>%
+  mutate(time.step = "Irregular")
+res_crw_1hr <- res_crw_1hr %>%
+  mutate(time.step = "1hr")
+res_crw_4hr <- res_crw_4hr %>%
+  mutate(time.step = "4hr")
+res_crw_8hr <- res_crw_8hr %>%
+  mutate(time.step = "8hr")
+
+all.mods <- rbind(res_crw_fitted, res_crw_1hr, res_crw_4hr, res_crw_8hr)
+all.mods$time.step <- factor(all.mods$time.step, levels = c("Irregular","1hr","4hr","8hr"))
+
+behav.ts.plot <- ggplot() +
+  geom_line(data = all.mods %>%
+              filter(id == 205540 | id == 41614), aes(date, g, color = time.step), alpha = 0.7, size = 1) +
+  scale_color_manual("Time Step", values = RColorBrewer::brewer.pal(4, "Dark2")) +
+  labs(x = 'Date', y = expression(gamma)) +
+  theme_bw() +
+  theme(strip.text = element_text(face = "bold", size = 10),
+        legend.position = "top",
+        panel.grid = element_blank(),
+        axis.title.x = element_text(size = 14),
+        axis.title.y = element_text(size = 16),
+        axis.text = element_text(size = 10)) +
+  facet_wrap(~id, scales = "free_x", ncol = 1)
+
+
+behav.map <- ggplot() +
+  geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
+  geom_path(data = all.mods %>%
+              filter(id %in% c(205540, 41614)), aes(lon, lat), alpha = 0.7) +
+  geom_point(data = all.mods %>%
+               filter(id %in% c(205540, 41614)), aes(lon, lat, color = g)) +
+  scale_color_viridis_c(expression(gamma), option = 'inferno') +
+  coord_sf(xlim = c(-40, -32), ylim = c(-7, -3)) +
+  labs(x = "Longitude", y = "Latitude") +
+  theme_bw() +
+  theme(strip.text = element_text(face = "bold", size = 10),
+        legend.position = "top",
+        panel.grid = element_blank(),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 10),
+        legend.title = element_text(size = 16)) +
+  guides(color = guide_colourbar(barwidth = 15, barheight = 1)) +
+  facet_grid(time.step ~ id)
+
+
+behav.ts.plot + behav.map + plot_annotation(tag_levels = 'a', tag_suffix = ')')
+
+# ggsave("Figures/Fig 2.png", width = 10, height = 6, units = "in", dpi = 400)
+
+
 ### Export fitted tracks ###
 
-write.csv(res_crw_1hr, "Processed_data/SSM_CRW1hr_FDN Cmydas tracks.csv", row.names = FALSE)
-write.csv(res_crw_4hr, "Processed_data/SSM_CRW4hr_FDN Cmydas tracks.csv", row.names = FALSE)
-write.csv(res_crw_8hr, "Processed_data/SSM_CRW8hr_FDN Cmydas tracks.csv", row.names = FALSE)
-write.csv(res_crw_fitted, "Processed_data/SSM_irreg_FDN Cmydas tracks.csv", row.names = FALSE)
+# write.csv(res_crw_1hr, "Processed_data/SSM_CRW1hr_FDN Cmydas tracks.csv", row.names = FALSE)
+# write.csv(res_crw_4hr, "Processed_data/SSM_CRW4hr_FDN Cmydas tracks.csv", row.names = FALSE)
+# write.csv(res_crw_8hr, "Processed_data/SSM_CRW8hr_FDN Cmydas tracks.csv", row.names = FALSE)
+# write.csv(res_crw_fitted, "Processed_data/SSM_irreg_FDN Cmydas tracks.csv", row.names = FALSE)

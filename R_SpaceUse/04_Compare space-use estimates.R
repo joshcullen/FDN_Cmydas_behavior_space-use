@@ -11,6 +11,7 @@ library(sf)  #v1.0.7
 library(rnaturalearth)
 library(MetBrewer)
 library(units)
+library(patchwork)
 
 
 
@@ -85,6 +86,61 @@ ggplot() +
 
 
 
+############################
+### Fig 5 for manuscript ###
+############################
+
+# Plot 3 migrants and 3 residents in composite fig
+mig.ids <- c(205538, 226066, 226070)
+mig.plot <- ggplot() +
+  geom_sf(data = brazil) +
+  geom_path(data = dat %>%
+              filter(id %in% mig.ids), aes(x, y, group = id), size = 0.5, alpha = 0.5) +
+  geom_sf(data = ud.all %>%
+            filter(id %in% mig.ids), aes(color = method), fill = "transparent", size = 0.5) +
+  # scale_color_manual("", values = c(MetPalettes$Juarez[[1]][c(1:3)], MetPalettes$VanGogh3[[1]][5])) +
+  scale_color_met_d("Hokusai3", direction = -1) +
+  labs(x = "Longitude", y = "Latitude", title = "Migratory") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 8),
+        strip.text = element_text(size = 12, face = "bold"),
+        legend.text = element_text(size = 10),
+        legend.title = element_blank()) +
+  coord_sf(xlim = c(min(dat$x) - 100, max(dat$x) + 100),
+           ylim = c(min(dat$y) - 100, max(dat$y) + 100)) +
+  facet_grid(id ~ level)
+
+
+res.dat <- dat %>%
+  filter(id %in% c(205542, 226069, 226072))
+res.plot <- ggplot() +
+  # geom_sf(data = brazil) +
+  geom_path(data = res.dat, aes(x, y, group = id), size = 0.5, alpha = 0.25) +
+  geom_sf(data = ud.all %>%
+            filter(id %in% unique(res.dat$id)), aes(color = method), fill = "transparent", size = 0.5) +
+  # scale_color_manual("", values = c(MetPalettes$Juarez[[1]][c(1:3)], MetPalettes$VanGogh3[[1]][5])) +
+  scale_color_met_d("Hokusai3", direction = -1) +
+  labs(x = "Longitude", y = "Latitude", title = 'Resident') +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 8),
+        strip.text = element_text(size = 12, face = "bold"),
+        legend.text = element_text(size = 10),
+        legend.title = element_blank()) +
+  # coord_sf(xlim = c(min(res.dat$x) - 1, max(res.dat$x) + 1),
+  #          ylim = c(min(res.dat$y) - 1, max(res.dat$y) + 1)) +
+  facet_grid(id ~ level)
+
+
+
+mig.plot + res.plot +
+  plot_annotation(tag_levels = 'a', tag_suffix = ')') +
+  plot_layout(guides = 'collect')
+
+# ggsave("Figures/Fig 5.png", width = 12, height = 5, units = "in", dpi = 400)
 
 
 
@@ -95,25 +151,56 @@ ud.all$strategy <- ifelse(ud.all$id %in% residents, 'Resident', 'Migratory')
 
 
 # Compare by method and UD level
-ggplot(ud.all, aes(factor(level), area, color = method)) +
+iso.plot <- ggplot(ud.all, aes(factor(level), area, color = method)) +
   geom_boxplot(width = 0.5, outlier.shape = NA, position = position_dodge(0.55)) +
   geom_point(alpha = 0.7, position = position_jitterdodge(jitter.width = 0.15, dodge.width = 0.55)) +
-  scale_color_met_d("Hokusai3") +
-  theme_bw()
+  scale_color_met_d("Hokusai3", direction = -1) +
+  labs(x = "UD Isopleth") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 10),
+        legend.text = element_text(size = 10),
+        legend.title = element_blank())
 
 
 # Compare by movement strategy
-ggplot(ud.all %>%
+strategy.plot <- ggplot(ud.all %>%
          filter(level == 0.95), aes(strategy, area, color = method)) +
   geom_boxplot(width = 0.5, outlier.shape = NA, position = position_dodge(0.55)) +
   geom_point(alpha = 0.7, position = position_jitterdodge(jitter.width = 0.15, dodge.width = 0.55)) +
-  scale_color_met_d("Hokusai3") +
-  theme_bw()
+  scale_color_met_d("Hokusai3", direction = -1) +
+  labs(x = "95% UD") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.title = element_text(size = 14),
+        axis.text = element_text(size = 10),
+        legend.text = element_text(size = 10),
+        legend.title = element_blank())
 
 # Focus on Residents
-ggplot(ud.all %>%
+res.area.plot <- ggplot(ud.all %>%
          filter(strategy == 'Resident'), aes(factor(level), area, color = method)) +
   geom_boxplot(width = 0.5, outlier.shape = NA, position = position_dodge(0.55)) +
   geom_point(alpha = 0.7, position = position_jitterdodge(jitter.width = 0.15, dodge.width = 0.55)) +
-  scale_color_met_d("Hokusai3") +
-  theme_bw()
+  scale_color_met_d("Hokusai3", direction = -1) +
+  labs(x = "") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.title = element_text(size = 10),
+        axis.text = element_text(size = 10),
+        legend.text = element_text(size = 10),
+        legend.title = element_blank())
+
+
+############################
+### Fig 6 for manuscript ###
+############################
+
+iso.plot +
+  (strategy.plot + inset_element(res.area.plot, left = 0.35, right = 0.99, bottom = 0.5, top = 0.99,
+                                         align_to = "panel")) +
+  plot_layout(guides = 'collect') +
+  plot_annotation(tag_levels = 'a', tag_suffix = ')')
+
+# ggsave("Figures/Fig 6.png", width = 12, height = 5, units = "in", dpi = 400)
