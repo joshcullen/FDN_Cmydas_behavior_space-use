@@ -5,8 +5,8 @@
 
 library(tidyverse)
 library(lubridate)
-library(foieGras)  #v1.0-7
-library(sf)  #v1.0.7
+library(aniMotum)  #v1.1.4
+library(sf)  #v1.0.12
 library(rnaturalearth)
 library(tictoc)
 library(plotly)
@@ -14,6 +14,8 @@ library(future)
 library(patchwork)
 library(ggspatial)
 library(wesanderson)
+library(giscoR)
+library(ggshadow)
 
 
 
@@ -482,14 +484,17 @@ pal1 <- c(wes_palettes$Darjeeling1,
 
 tracks.plot <- ggplot() +
   geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
-  geom_path(data = res_crw_fitted, aes(lon, lat, group = id, color = id), size = 0.75, alpha = 0.8) +
+  geom_path(data = res_crw_fitted, aes(lon, lat, group = id, color = id), size = 0.75,
+            alpha = 0.8) +
   scale_color_manual(values = pal1, guide = "none") +
+  geom_point(data = res_crw_fitted[1,], aes(lon, lat), size = 4, alpha = 0.8, shape = 21,
+             fill = "gold", stroke = 1) +
   labs(x = "Longitude", y = "Latitude") +
-  annotate(geom = "text", label = "Brazil", x = -37, y = -6, size = 12) +
-  annotate(geom = "text", label = "Fernando de Noronha", x = -32.75, y = -3.5, size = 3) +
+  geom_text(aes(label = "Brazil", x = -37, y = -6), size = 12, fontface = "italic") +
+  geom_text(aes(label = "Fernando de Noronha", x = -33, y = -3.5), size = 4) +
   annotation_scale(location = "bl", width_hint = 0.5, style = "ticks",
-                   line_col = "black", text_col = "black", line_width = 1.5,
-                   text_cex = 1) +
+                   line_col = "black", text_col = "black", line_width = 3,
+                   text_cex = 1, text_face = "bold") +
   theme_bw() +
   theme(panel.grid = element_blank(),
         axis.title = element_text(size = 18),
@@ -501,9 +506,18 @@ tracks.plot <- ggplot() +
 ocean <- st_point(x = c(0,0)) %>%
   st_buffer(dist = 6371000) %>%
   st_sfc(crs = "+proj=ortho +lat_0=-5 +lon_0=-36 +x_0=0 +y_0=0 +R=6371000 +units=m +no_defs +type=crs")
+ocean_df <- st_cast(ocean, "LINESTRING") %>%
+  st_coordinates() %>%
+  as.data.frame()
 
 # country polygons, cut to size
 world <- gisco_countries %>%
+  st_intersection(ocean %>% st_transform(4326)) %>% # select visible area only
+  st_transform(crs = "+proj=ortho +lat_0=-5 +lon_0=-36 +x_0=0 +y_0=0 +R=6371000 +units=m +no_defs +type=crs")
+
+# get global graticule
+grid <- st_graticule()
+grid_crp <- st_difference(grid, st_union(gisco_countries)) %>%
   st_intersection(ocean %>% st_transform(4326)) %>% # select visible area only
   st_transform(crs = "+proj=ortho +lat_0=-5 +lon_0=-36 +x_0=0 +y_0=0 +R=6371000 +units=m +no_defs +type=crs")
 
@@ -513,17 +527,44 @@ bbox <- st_sfc(st_point(c(-42, -8)), st_point(c(-32, -2)), crs = 4326) %>%
   st_as_sfc() %>%
   st_transform(crs = "+proj=ortho +lat_0=-5 +lon_0=-36 +x_0=0 +y_0=0 +R=6371000 +units=m +no_defs +type=crs")
 
+
+# combining several layers of shadow
+# shadow.p <- ggplot() +
+#   geom_glowpath(data = ocean_df,
+#                 aes(X, Y, group = "L1"),
+#                 shadowcolor='grey90',
+#                 colour = "white",
+#                 alpha = .01,
+#                 shadowalpha=0.05,
+#                 shadowsize = 1.8) +
+#   geom_glowpath(data = ocean_df,
+#                 aes(X, Y, group = "L1"),
+#                 shadowcolor='grey90',
+#                 colour = "white",
+#                 alpha = .01,
+#                 shadowalpha=0.02,
+#                 shadowsize = 1) +
+#   geom_glowpath(data = ocean_df,
+#                 aes(X, Y, group = "L1"),
+#                 shadowcolor='grey90',
+#                 colour = "white",
+#                 alpha = .01,
+#                 shadowalpha=0.01,
+#                 shadowsize = .5)
+
 # create inset map
-inset.plot <- ggplot(data = world) +
+inset.plot <- ggplot() +
   geom_sf(data = ocean, fill = "aliceblue", color = NA) + # background first
-  geom_sf(lwd = 0.1) + # now land over the oceans
-  geom_sf(data = bbox, fill = "transparent", color = "red", size = 1) +
+  geom_sf(data = world, lwd = 0.1) + # now land over the oceans
+  geom_sf(data = grid_crp, color = "grey80", linewidth = 0.2) +  #graticules over water
+  geom_sf(data = bbox, fill = "transparent", color = "red", linewidth = 1) +
   coord_sf(expand = FALSE) +
   theme_void()
 
 
 tracks.plot +
-  inset_element(inset.plot, left = 0, bottom = 0.15, right = 0.45, top = 0.55, align_to = "plot")
+  inset_element(inset.plot, left = 0, bottom = 0.17, right = 0.45, top = 0.57,
+                align_to = "plot")
 
 # ggsave("Figures/Fig 1.png", width = 8, height = 6, units = "in", dpi = 400)
 

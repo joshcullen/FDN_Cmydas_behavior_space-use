@@ -5,12 +5,14 @@
 
 library(tidyverse)
 library(lubridate)
-library(foieGras)  #v1.0-7
+library(aniMotum)  #v1.0-7
 library(momentuHMM)  #v1.5.4
 library(bayesmove)  #v0.2.1
 library(sf)  #v1.0.7
 library(rnaturalearth)
 library(plotly)
+library(wesanderson)
+library(patchwork)
 
 
 
@@ -31,7 +33,7 @@ ssm_res<- join(ssm = fit_crw_8hr,
 hmm_res <- dat3 %>%
   mutate(state = viterbi(fit_hmm_3states_3vars))
 
-bayes_res <- dat.out2
+bayes_res <- dat.out.8hr
 
 
 
@@ -203,3 +205,45 @@ ggplotly(
     coord_sf(xlim = c(min(bayes_res_205537$x - 50), max(bayes_res_205537$x + 50)),
              ylim = c(min(bayes_res_205537$y - 50), max(bayes_res_205537$y + 50)))
 )
+
+
+
+
+### Create Supplemental Figures ###
+
+brazil_hires <- ne_countries(scale = 10, country = "brazil", returnclass = 'sf') %>%
+  st_transform(crs = "+proj=merc +lon_0=0 +datum=WGS84 +units=km +no_defs")
+
+pal1 <- c(wes_palettes$Darjeeling1,
+          wes_palettes$Darjeeling2,
+          wes_palettes$Cavalcanti1,
+          wes_palettes$Rushmore1)
+
+m4.map.p <- ggplot() +
+  geom_sf(data = brazil_hires) +
+  geom_path(data = bayes_res, aes(x, y, group = id), color = "grey60", linewidth = 0.25) +
+  geom_point(data = bayes_res, aes(x, y, color = behav), size = 1.5, alpha = 0.7) +
+  scale_color_viridis_d("M4 Behavioral State") +
+  labs(x = "Longitude", y = "Latitude") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 16),
+        strip.text = element_text(size = 14, face = "bold"),
+        panel.grid = element_blank()) +
+  coord_sf(xlim = c(min(bayes_res$x - 50), max(bayes_res$x + 50)),
+           ylim = c(min(bayes_res$y - 50), max(bayes_res$y + 50)))
+
+
+disp.ts.p <- ggplot(bayes_res) +
+  geom_path(aes(date, disp, group = id, color = id)) +
+  scale_color_manual("ID", values = pal1) +
+  labs(x = "Date", y = "Displacement (km)") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 16),
+        axis.text = element_text(size = 12),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10)) +
+  guides(color = guide_legend(ncol = 2, override.aes = list(linewidth = 1)))
+
+m4.map.p / disp.ts.p  + plot_annotation(tag_levels = 'a', tag_suffix = ')')
+
+# ggsave("Figures/Fig SX2.png", width = 8, height = 6, units = "in", dpi = 400)

@@ -369,7 +369,8 @@ theta.estim.1hr <- theta.estim.1hr[,c(1:2,4:6,9)]  #remove all other "foraging" 
 
 #Reformat proportion estimates for all track segments
 theta.estim.long.1hr<- expand_behavior(dat = dat.seg.1hr, theta.estim = theta.estim.1hr, obs = obs, nbehav = 5,
-                                       behav.names = c("Migratory","Foraging","Breeding_Encamped","Breeding_ARS","Breeding_Exploratory"),
+                                       behav.names = c("Migratory","Foraging","Breeding_Encamped",
+                                                       "Breeding_ARS","Breeding_Exploratory"),
                                        behav.order = c(3:5,2,1))
 
 #Plot results
@@ -749,7 +750,8 @@ theta.estim.4hr <- theta.estim.4hr[,c(1:3,5,8:9)]  #remove all other "foraging" 
 
 #Reformat proportion estimates for all track segments
 theta.estim.long.4hr<- expand_behavior(dat = dat.seg.4hr, theta.estim = theta.estim.4hr, obs = obs, nbehav = 4,
-                                       behav.names = c("Migratory","Breeding_Encamped","Foraging","Breeding_ARS"),
+                                       behav.names = c("Migratory","Breeding_Encamped","Foraging",
+                                                       "Breeding_ARS"),
                                        behav.order = c(2,4,3,1))
 
 #Plot results
@@ -1252,8 +1254,8 @@ behav.res.seg <- behav.res.seg.8hr2 %>%
   filter(!behav %in% c(8,9)) %>%
   mutate(across(behav1, factor, levels = c('Breeding_Encamped','Breeding_ARS','Foraging',
                                            'Migratory'))) %>%
-  mutate(across(var, factor))
-levels(behav.res.seg$var) <- c("Displacement (km)", "Step Length (km)", "Turning Angle (rad)")
+  mutate(across(var, factor, levels = unique(var)))
+levels(behav.res.seg$var) <- c("Step Length (km)", "Turning Angle (rad)", "Displacement (km)")
 
 state.dep.plot <- ggplot(behav.res.seg, aes(x = bin.vals, y = prop, fill = behav1)) +
   geom_bar(stat = 'identity', position = "dodge") +
