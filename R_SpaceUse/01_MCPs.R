@@ -5,8 +5,8 @@
 
 library(tidyverse)
 library(lubridate)
-library(amt)  #v0.1.7
-library(sf)  #v1.0.7
+library(amt)
+library(sf)
 library(rnaturalearth)
 library(plotly)
 
@@ -50,24 +50,39 @@ ggplot() +
 
 
 
-#### Calculate MCPs per ID (at 95% level) ####
+#### Calculate MCPs per ID (at 50 and 95% levels) ####
 
 # Need to turn data.frame into list to map hr_mcp() function and then recombine
 dat.id.mcp <- dat.track %>%
   split(.$id) %>%
-  map(hr_mcp, levels = 0.95) %>%
+  map(hr_mcp, levels = c(0.5, 0.95)) %>%
   map(pluck, 1) %>%
   do.call(rbind, .)
 
 dat.id.mcp <- dat.id.mcp %>%
-  mutate(id = rownames(.), .before = level)
+  mutate(id = rownames(.), .before = level) %>%
+  mutate(id = str_remove(string = id, pattern = "\\..$"))
 
 
+# 95% MCPs
 ggplotly(
   ggplot() +
     geom_sf(data = brazil) +
     geom_point(data = dat, aes(lon, lat, color = factor(id)), alpha = 0.25, size = 1) +
-    geom_sf(data = dat.id.mcp, aes(color = id), fill = 'transparent', size = 0.75) +
+    geom_sf(data = dat.id.mcp %>%
+              filter(level == 0.95), aes(color = id), fill = 'transparent', size = 0.75) +
+    scale_color_viridis_d() +
+    theme_bw() +
+    coord_sf(xlim = c(-42, -32), ylim = c(-8, -2))
+)
+
+# 50% MCPs
+ggplotly(
+  ggplot() +
+    geom_sf(data = brazil) +
+    geom_point(data = dat, aes(lon, lat, color = factor(id)), alpha = 0.25, size = 1) +
+    geom_sf(data = dat.id.mcp %>%
+              filter(level == 0.5), aes(color = id), fill = 'transparent', size = 0.75) +
     scale_color_viridis_d() +
     theme_bw() +
     coord_sf(xlim = c(-42, -32), ylim = c(-8, -2))

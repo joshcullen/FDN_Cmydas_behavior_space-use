@@ -5,8 +5,8 @@
 
 library(tidyverse)
 library(lubridate)
-library(momentuHMM)  #v1.5.4
-library(sf)  #v1.0.7
+library(momentuHMM)
+library(sf)
 library(tictoc)
 library(plotly)
 library(rnaturalearth)
@@ -763,7 +763,7 @@ state.dep.dist <- state.dep.dist.list %>%
 # plot state-dependent distributions (8 hr time step)
 state.dep.plot <- ggplot() +
   geom_line(data = state.dep.dist %>%
-              filter(tstep == '8hr'), aes(x = x, y = density, colour = state), size=1) +
+              filter(tstep == '8hr'), aes(x = x, y = density, color = state), linewidth=1) +
   scale_color_manual('', values = MetPalettes$Egypt[[1]][c(1,3,4)]) +
   labs(x = "", y = "Density") +
   theme_bw() +
@@ -810,6 +810,7 @@ behav.map <- ggplot() +
   coord_sf(xlim = c(-40, -32), ylim = c(-7, -3)) +
   labs(x = "Longitude", y = "Latitude") +
   theme_bw() +
+  scale_x_continuous(guide = guide_axis(check.overlap = TRUE)) +
   theme(strip.text = element_text(face = "bold", size = 10),
         legend.position = "top",
         panel.grid = element_blank(),
@@ -819,14 +820,14 @@ behav.map <- ggplot() +
   facet_grid(time.step ~ ID)
 
 
-state.dep.plot / (behav.ts.plot + behav.map) + plot_annotation(tag_levels = 'a', tag_suffix = ')')
+state.dep.plot / (behav.ts.plot + behav.map) + plot_annotation(tag_levels = 'a', tag_suffix = ')') & theme(plot.tag = element_text(size = 16))
 
 # ggsave("Figures/Fig 3.png", width = 10, height = 7, units = "in", dpi = 400)
 
 
 
 ##############
-### Fig S4 ###
+### Fig S3 ###
 ##############
 
 # plot state-dependent distributions
@@ -842,21 +843,21 @@ ggplot() +
         axis.title.y = element_text(size = 18),
         strip.text = element_text(size = 16),
         strip.placement = "outside") +
-  facet_wrap(var ~ tstep, scales = "free", strip.position = "bottom")
+  facet_wrap(var ~ tstep, scales = "free", strip.position = "top")
 
-# ggsave("Figures/Fig S4.png", width = 10, height = 7, units = "in", dpi = 400)
+# ggsave("Figures/Fig S3.png", width = 10, height = 7, units = "in", dpi = 400)
 
 
 
 
 ##############
-### Fig S5 ###
+### Fig S4 ###
 ##############
 
 # Plot time series of two residents IDs
 behav.ts.res.plot <- ggplot() +
   geom_point(data = all.fits %>%
-               filter(ID %in% c(205542, 226071)), aes(date, state, color = state), alpha = 0.3) +
+               filter(ID %in% c(205542, 226072)), aes(date, state, color = state), alpha = 0.3) +
   scale_color_manual('', values = MetPalettes$Egypt[[1]][c(1,4,3)], guide = "none") +
   theme_bw() +
   labs(x = "Date", y = "State") +
@@ -871,9 +872,9 @@ behav.ts.res.plot <- ggplot() +
 behav.res.map <- ggplot() +
   # geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
   geom_path(data = all.fits %>%
-              filter(ID %in% c(205542, 226071)), aes(lon, lat), alpha = 0.7) +
+              filter(ID %in% c(205542, 226072)), aes(lon, lat), alpha = 0.7) +
   geom_point(data = all.fits %>%
-               filter(ID %in% c(205542, 226071)), aes(lon, lat, color = state)) +
+               filter(ID %in% c(205542, 226072)), aes(lon, lat, color = state)) +
   scale_color_manual('', values = MetPalettes$Egypt[[1]][c(1,4,3)], guide = "none") +
   # coord_sf(xlim = c(-32.46, -32.41), ylim = c(-3.89, -3.85)) +
   labs(x = "Longitude", y = "Latitude") +
@@ -889,7 +890,7 @@ behav.res.map <- ggplot() +
 
 behav.ts.res.plot + behav.res.map + plot_annotation(tag_levels = 'a', tag_suffix = ')')
 
-# ggsave("Figures/Fig S5.png", width = 10, height = 7, units = "in", dpi = 400)
+# ggsave("Figures/Fig S4.png", width = 12, height = 7, units = "in", dpi = 400)
 
 
 

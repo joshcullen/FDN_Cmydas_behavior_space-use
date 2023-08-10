@@ -6,8 +6,8 @@
 
 library(tidyverse)
 library(lubridate)
-library(bayesmove)  #v0.2.1
-library(sf)  #v1.0.7
+library(bayesmove)
+library(sf)
 library(rnaturalearth)
 library(plotly)
 library(furrr)
@@ -125,23 +125,24 @@ ggplot(dat_1hr_2) +
 # Define bin limits (and number of bins)
 
 # turning angle (naturally constrained in [0,2*pi] or [-pi,+pi])
-angle.bin.lims <- c(-pi, -pi/2, -pi/4, -pi/8, -pi/16, 0, pi/16, pi/8, pi/4, pi/2, pi)  #10 bins
+angle.bin.lims_1 <- c(-pi, -pi/2, -pi/4, -pi/8, -pi/16, 0, pi/16, pi/8, pi/4, pi/2, pi)  #10 bins
 
 # step length (must be positive, but no upper bound)
-step.bin.lims <- c(seq(0, 1, by = 0.2), 2, max(dat_1hr_2$step, na.rm = TRUE))  #7 bins
+step.bin.lims_1 <- c(seq(0, 1, by = 0.2), 2, max(dat_1hr_2$step, na.rm = TRUE))  #7 bins
 
 # displacement (must be positive, but no upper bound)
-disp.bin.lims <- c(0, 10, seq(from = 150, to = 1050, by = 150))  #8 bins
+disp.bin.lims_1 <- c(0, 10, seq(from = 150, to = 1050, by = 150))  #8 bins
 
 
-angle.bin.lims
-step.bin.lims
-disp.bin.lims
+angle.bin.lims_1
+step.bin.lims_1
+disp.bin.lims_1
 
 
 # Discretize data streams
 dat.disc.1hr <- discrete_move_var(dat_1hr_2,
-                                  lims = list(step.bin.lims, angle.bin.lims, disp.bin.lims),
+                                  lims = list(step.bin.lims_1, angle.bin.lims_1,
+                                              disp.bin.lims_1),
                                   varIn = c("step","angle","disp"),
                                   varOut = c("SL","TA","Disp"))
 
@@ -308,23 +309,24 @@ behav.res.seg.1hr<- get_behav_hist(dat = dat.res.segclust.1hr, nburn = nburn, ng
                                    var.names = c("Step Length","Turning Angle","Displacement"))
 
 # Add bin lim range to each label
-step.lims <- data.frame(bin.vals = cut(dat_1hr_2$step, step.bin.lims) %>%
+step.lims <- data.frame(bin.vals = cut(dat_1hr_2$step, step.bin.lims_1) %>%
                           levels(),
-                        bin = 1:(length(step.bin.lims) - 1),
+                        bin = 1:(length(step.bin.lims_1) - 1),
                         var = "Step Length")
-angle.lims <- data.frame(bin.vals = cut(dat_1hr_2$angle, round(angle.bin.lims, 2)) %>%
+angle.lims <- data.frame(bin.vals = cut(dat_1hr_2$angle, round(angle.bin.lims_1, 2)) %>%
                            levels(),
-                         bin = 1:(length(angle.bin.lims) - 1),
+                         bin = 1:(length(angle.bin.lims_1) - 1),
                          var = "Turning Angle")
-disp.lims <- data.frame(bin.vals = cut(dat_1hr_2$disp, round(disp.bin.lims, 2)) %>%
+disp.lims <- data.frame(bin.vals = cut(dat_1hr_2$disp, round(disp.bin.lims_1, 2)) %>%
                           levels(),
-                        bin = 1:(length(disp.bin.lims) - 1),
+                        bin = 1:(length(disp.bin.lims_1) - 1),
                         var = "Displacement")
 lims <- rbind(step.lims, angle.lims, disp.lims)
 
 behav.res.seg.1hr <- left_join(behav.res.seg.1hr, lims, by = c('var','bin')) %>%
   arrange(desc(var))
-behav.res.seg.1hr$bin.vals <- factor(behav.res.seg.1hr$bin.vals, levels = unique(behav.res.seg.1hr$bin.vals))
+behav.res.seg.1hr$bin.vals <- factor(behav.res.seg.1hr$bin.vals,
+                                     levels = unique(behav.res.seg.1hr$bin.vals))
 
 # Plot state-dependent distributions
 ggplot(behav.res.seg.1hr, aes(x = bin.vals, y = prop, fill = as.factor(behav))) +
@@ -368,9 +370,11 @@ theta.estim.1hr <- theta.estim.1hr[,c(1:2,4:6,9)]  #remove all other "foraging" 
 
 
 #Reformat proportion estimates for all track segments
-theta.estim.long.1hr<- expand_behavior(dat = dat.seg.1hr, theta.estim = theta.estim.1hr, obs = obs, nbehav = 5,
-                                       behav.names = c("Migratory","Foraging","Breeding_Encamped",
-                                                       "Breeding_ARS","Breeding_Exploratory"),
+theta.estim.long.1hr<- expand_behavior(dat = dat.seg.1hr,
+                                       theta.estim = theta.estim.1hr, obs = obs, nbehav = 5,
+                                       behav.names = c("Migratory","Foraging",
+                                                       "Breeding_Encamped","Breeding_ARS",
+                                                       "Breeding_Exploratory"),
                                        behav.order = c(3:5,2,1))
 
 #Plot results
@@ -507,23 +511,24 @@ ggplot(dat_4hr_2) +
 # Define bin limits (and number of bins)
 
 # turning angle (naturally constrained in [0,2*pi] or [-pi,+pi])
-angle.bin.lims <- seq(from = -pi, to = pi, by = pi/4)  #8 bins
+angle.bin.lims_4 <- seq(from = -pi, to = pi, by = pi/4)  #8 bins
 
 # step length (must be positive, but no upper bound)
-step.bin.lims <- c(0, 0.5, 1:5, 10, max(dat_4hr_2$step, na.rm = TRUE))  #8 bins
+step.bin.lims_4 <- c(0, 0.5, 1:5, 10, max(dat_4hr_2$step, na.rm = TRUE))  #8 bins
 
 # displacement (must be positive, but no upper bound)
-disp.bin.lims <- seq(from = 0, to = 1050, by = 150)  #7 bins
+disp.bin.lims_4 <- seq(from = 0, to = 1050, by = 150)  #7 bins
 
 
-angle.bin.lims
-step.bin.lims
-disp.bin.lims
+angle.bin.lims_4
+step.bin.lims_4
+disp.bin.lims_4
 
 
 # Discretize data streams
 dat.disc.4hr <- discrete_move_var(dat_4hr_2,
-                                  lims = list(step.bin.lims, angle.bin.lims, disp.bin.lims),
+                                  lims = list(step.bin.lims_4, angle.bin.lims_4,
+                                              disp.bin.lims_4),
                                   varIn = c("step","angle","disp"),
                                   varOut = c("SL","TA","Disp"))
 
@@ -690,17 +695,17 @@ behav.res.seg.4hr<- get_behav_hist(dat = dat.res.segclust.4hr, nburn = nburn, ng
                                    var.names = c("Step Length","Turning Angle","Displacement"))
 
 # Add bin lim range to each label
-step.lims <- data.frame(bin.vals = cut(dat_4hr_2$step, step.bin.lims) %>%
+step.lims <- data.frame(bin.vals = cut(dat_4hr_2$step, step.bin.lims_4) %>%
                           levels(),
-                        bin = 1:(length(step.bin.lims) - 1),
+                        bin = 1:(length(step.bin.lims_4) - 1),
                         var = "Step Length")
-angle.lims <- data.frame(bin.vals = cut(dat_4hr_2$angle, round(angle.bin.lims, 2)) %>%
+angle.lims <- data.frame(bin.vals = cut(dat_4hr_2$angle, round(angle.bin.lims_4, 2)) %>%
                            levels(),
-                         bin = 1:(length(angle.bin.lims) - 1),
+                         bin = 1:(length(angle.bin.lims_4) - 1),
                          var = "Turning Angle")
-disp.lims <- data.frame(bin.vals = cut(dat_4hr_2$disp, round(disp.bin.lims, 2)) %>%
+disp.lims <- data.frame(bin.vals = cut(dat_4hr_2$disp, round(disp.bin.lims_4, 2)) %>%
                           levels(),
-                        bin = 1:(length(disp.bin.lims) - 1),
+                        bin = 1:(length(disp.bin.lims_4) - 1),
                         var = "Displacement")
 lims <- rbind(step.lims, angle.lims, disp.lims)
 
@@ -888,23 +893,24 @@ ggplot(dat_8hr_2) +
 # Define bin limits (and number of bins)
 
 # turning angle (naturally constrained in [0,2*pi] or [-pi,+pi])
-angle.bin.lims <- seq(from = -pi, to = pi, by = pi/4)  #8 bins
+angle.bin.lims_8 <- seq(from = -pi, to = pi, by = pi/4)  #8 bins
 
 # step length (must be positive, but no upper bound)
-step.bin.lims <- c(seq(from = 0, to = 5, length = 6), 10, 20, max(dat_8hr_2$step, na.rm = TRUE))  #8 bins
+step.bin.lims_8 <- c(seq(from = 0, to = 5, length = 6), 10, 20, max(dat_8hr_2$step,
+                                                                    na.rm = TRUE))  #8 bins
 
 # displacement (must be positive, but no upper bound)
-disp.bin.lims <- seq(from = 0, to = 1050, by = 150)  #7 bins
+disp.bin.lims_8 <- seq(from = 0, to = 1050, by = 150)  #7 bins
 
 
-angle.bin.lims
-step.bin.lims
-disp.bin.lims
+angle.bin.lims_8
+step.bin.lims_8
+disp.bin.lims_8
 
 
 # Discretize data streams
 dat.disc.8hr <- discrete_move_var(dat_8hr_2,
-                              lims = list(step.bin.lims, angle.bin.lims, disp.bin.lims),
+                              lims = list(step.bin.lims_8, angle.bin.lims_8, disp.bin.lims_8),
                               varIn = c("step","angle","disp"),
                               varOut = c("SL","TA","Disp"))
 
@@ -1071,17 +1077,17 @@ behav.res.seg.8hr<- get_behav_hist(dat = dat.res.segclust.8hr, nburn = nburn, ng
                                var.names = c("Step Length","Turning Angle","Displacement"))
 
 # Add bin lim range to each label
-step.lims <- data.frame(bin.vals = cut(dat_8hr_2$step, step.bin.lims) %>%
+step.lims <- data.frame(bin.vals = cut(dat_8hr_2$step, step.bin.lims_8) %>%
                           levels(),
-                        bin = 1:(length(step.bin.lims) - 1),
+                        bin = 1:(length(step.bin.lims_8) - 1),
                         var = "Step Length")
-angle.lims <- data.frame(bin.vals = cut(dat_8hr_2$angle, round(angle.bin.lims, 2)) %>%
+angle.lims <- data.frame(bin.vals = cut(dat_8hr_2$angle, round(angle.bin.lims_8, 2)) %>%
                            levels(),
-                         bin = 1:(length(angle.bin.lims) - 1),
+                         bin = 1:(length(angle.bin.lims_8) - 1),
                          var = "Turning Angle")
-disp.lims <- data.frame(bin.vals = cut(dat_8hr_2$disp, round(disp.bin.lims, 2)) %>%
+disp.lims <- data.frame(bin.vals = cut(dat_8hr_2$disp, round(disp.bin.lims_8, 2)) %>%
                           levels(),
-                        bin = 1:(length(disp.bin.lims) - 1),
+                        bin = 1:(length(disp.bin.lims_8) - 1),
                         var = "Displacement")
 lims <- rbind(step.lims, angle.lims, disp.lims)
 
@@ -1252,7 +1258,8 @@ behav.res.seg <- behav.res.seg.8hr2 %>%
                             behav == 4 ~ 'Foraging',
                             TRUE ~ behav)) %>%
   filter(!behav %in% c(8,9)) %>%
-  mutate(across(behav1, factor, levels = c('Breeding_Encamped','Breeding_ARS','Foraging',
+  mutate(across(behav1, factor, levels = c('Breeding_Encamped','Breeding_ARS',
+                                           'Breeding_Exploratory','Foraging',
                                            'Migratory'))) %>%
   mutate(across(var, factor, levels = unique(var)))
 levels(behav.res.seg$var) <- c("Step Length (km)", "Turning Angle (rad)", "Displacement (km)")
@@ -1270,7 +1277,9 @@ state.dep.plot <- ggplot(behav.res.seg, aes(x = bin.vals, y = prop, fill = behav
         strip.text = element_text(size = 16),
         strip.background = element_blank(),
         strip.placement = "outside") +
-  scale_fill_manual('', values = MetPalettes$Egypt[[1]]) +
+  scale_fill_manual('', values = c(MetPalettes$Egypt[[1]][1:2], "black",
+                                   MetPalettes$Egypt[[1]][3:4]),
+                    drop = FALSE) +
   scale_y_continuous(breaks = c(0.00, 0.50, 1.00)) +
   facet_wrap(~ var, scales = "free_x", strip.position = "bottom")
 
@@ -1289,7 +1298,8 @@ behav.ts.plot <- ggplot(theta.estim.long %>%
             position = "fill") +
   labs(x = "Date", y = "Probability of Behavior") +
   scale_fill_manual('',
-                    values = c(MetPalettes$Egypt[[1]][1:2], "black", MetPalettes$Egypt[[1]][3:4])) +
+                    values = c(MetPalettes$Egypt[[1]][1:2], "black",
+                               MetPalettes$Egypt[[1]][3:4]), guide = "none") +
   theme_bw() +
   theme(axis.title = element_text(size = 16),
         axis.text.y = element_text(size = 14),
@@ -1326,9 +1336,263 @@ behav.map <- ggplot() +
   facet_grid(time.step ~ id)
 
 
-state.dep.plot / (behav.ts.plot + behav.map) + plot_annotation(tag_levels = 'a', tag_suffix = ')')
+state.dep.plot / (behav.ts.plot + behav.map) +
+  plot_annotation(tag_levels = 'a', tag_suffix = ')') &
+  theme(plot.tag = element_text(size = 20))
 
 # ggsave("Figures/Fig 4.png", width = 12, height = 8, units = "in", dpi = 400)
+
+
+
+
+#############################
+### Fig S1 for manuscript ###
+#############################
+
+# Combine datasets across time steps
+all.dat.vars <- list('1hr' = dat_1hr_2,
+                '4hr' = dat_4hr_2,
+                '8hr' = dat_8hr_2) %>%
+  bind_rows(.id = "tstep") %>%
+  dplyr::select(tstep, step, angle, disp) %>%
+  pivot_longer(cols = -tstep, names_to = "var", values_to = "value") %>%
+  mutate(var = factor(var, levels = c('step','angle','disp')))
+
+levels(all.dat.vars$var) <- c("Step Length (km)", "Turning Angle (radians)",
+                              "Displacement (km)")
+
+
+# Combine bin lims across time steps
+bin.lims <- data.frame(var = c(rep("step", length(c(step.bin.lims_1,
+                                                      step.bin.lims_4,
+                                                      step.bin.lims_8))),
+                                 rep("angle", length(c(angle.bin.lims_1,
+                                                       angle.bin.lims_4,
+                                                       angle.bin.lims_8))),
+                                 rep("disp", length(c(disp.bin.lims_1,
+                                                      disp.bin.lims_4,
+                                                      disp.bin.lims_8)))
+                                 ),
+                         value = c(step.bin.lims_1, step.bin.lims_4, step.bin.lims_8,
+                                   angle.bin.lims_1, angle.bin.lims_4, angle.bin.lims_8,
+                                   disp.bin.lims_1, disp.bin.lims_4, disp.bin.lims_8),
+                         tstep = c(rep("1hr", length(step.bin.lims_1)),
+                                   rep("4hr", length(step.bin.lims_4)),
+                                   rep("8hr", length(step.bin.lims_8)),
+                                   rep("1hr", length(angle.bin.lims_1)),
+                                   rep("4hr", length(angle.bin.lims_4)),
+                                   rep("8hr", length(angle.bin.lims_8)),
+                                   rep("1hr", length(disp.bin.lims_1)),
+                                   rep("4hr", length(disp.bin.lims_4)),
+                                   rep("8hr", length(disp.bin.lims_8)))
+                         ) %>%
+  mutate(var = factor(var, levels = c('step','angle','disp')))
+levels(bin.lims$var) <- c("Step Length (km)", "Turning Angle (radians)",
+                              "Displacement (km)")
+
+ggplot(all.dat.vars) +
+  geom_density(aes(value, after_stat(scaled), fill = var)) +
+  scale_fill_manual(values = c("cadetblue","firebrick","goldenrod"), guide = "none") +
+  geom_vline(data = bin.lims, aes(xintercept = value), linetype = "dashed", linewidth = 0.3) +
+  labs(x = "", y = "Density") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.title = element_text(size = 16),
+        axis.text = element_text(size = 12),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 14, face = "bold")) +
+  facet_grid(tstep ~ var, scales = "free")
+
+# ggsave("Figures/Fig S1.png", width = 9, height = 7, units = "in", dpi = 400)
+
+
+
+
+
+
+#############################
+### Fig S5 for manuscript ###
+#############################
+
+# wrangle and combine all state-dependent distributions
+behav.res.seg.1hr3 <- behav.res.seg.1hr2 %>%
+  mutate(behav1 = case_when(behav == 1 ~ 'Migratory',
+                            behav == 2 ~ 'Foraging',
+                            behav == 4 ~ 'Breeding_Encamped',
+                            behav == 5 ~ 'Breeding_ARS',
+                            behav == 6 ~ 'Breeding_Exploratory',
+                            TRUE ~ behav)) %>%
+  filter(behav %in% 1:6) %>%
+  mutate(across(behav1, \(x) factor(x, levels = c('Breeding_Encamped','Breeding_ARS',
+                                                  'Breeding_Exploratory', 'Foraging',
+                                                  'Migratory'))
+  )) %>%
+  mutate(across(var, \(x) factor(x, levels = c("Step Length", "Turning Angle",
+                                               "Displacement"))))
+levels(behav.res.seg.1hr3$var) <- c("Step Length (km)", "Turning Angle (rad)",
+                                    "Displacement (km)")
+
+
+behav.res.seg.4hr3 <- behav.res.seg.4hr2 %>%
+  mutate(behav1 = case_when(behav == 1 ~ 'Migratory',
+                            behav == 2 ~ 'Breeding_Encamped',
+                            behav == 3 ~ 'Foraging',
+                            behav == 5 ~ 'Breeding_ARS',
+                            TRUE ~ behav)) %>%
+  filter(behav %in% 1:5) %>%
+  mutate(across(behav1, \(x) factor(x, levels = c('Breeding_Encamped','Breeding_ARS',
+                                                  'Breeding_Exploratory', 'Foraging',
+                                                  'Migratory'))
+  )) %>%
+  mutate(across(var, \(x) factor(x, levels = unique(var))))
+levels(behav.res.seg.4hr3$var) <- c("Step Length (km)", "Turning Angle (rad)",
+                                    "Displacement (km)")
+
+
+behav.res.seg.8hr3 <- behav.res.seg.8hr2 %>%
+  mutate(behav1 = case_when(behav == 1 ~ 'Migratory',
+                            behav == 2 ~ 'Breeding_ARS',
+                            behav == 3 ~ 'Breeding_Encamped',
+                            behav == 4 ~ 'Foraging',
+                            TRUE ~ behav)) %>%
+  filter(behav %in% 1:4) %>%
+  mutate(across(behav1, \(x) factor(x, levels = c('Breeding_Encamped','Breeding_ARS',
+                                                  'Breeding_Exploratory', 'Foraging',
+                                                  'Migratory'))
+                )) %>%
+  mutate(across(var, \(x) factor(x, levels = unique(var))))
+levels(behav.res.seg.8hr3$var) <- c("Step Length (km)", "Turning Angle (rad)",
+                                    "Displacement (km)")
+
+
+
+
+# plot state-dependent distributions
+state.dep_1h.p <- ggplot(behav.res.seg.1hr3 |>
+                           mutate(tstep = '1 hr'), aes(x = bin.vals, y = prop,
+                                                       fill = behav1)) +
+  geom_bar(stat = 'identity', position = "dodge") +
+  labs(x = "", y = "Proportion") +
+  theme_bw() +
+  theme(legend.text = element_text(size = 14),
+        legend.position = "top",
+        panel.grid = element_blank(),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_text(size = 14),
+        axis.text.x.bottom = element_text(size = 12, angle = 45, vjust = 1, hjust=1),
+        strip.text = element_text(size = 16),
+        strip.placement = "outside") +
+  scale_fill_manual('', values = c(MetPalettes$Egypt[[1]][1:2], "black",
+                                   MetPalettes$Egypt[[1]][3:4])) +
+  scale_y_continuous(breaks = c(0.00, 0.50, 1.00)) +
+  facet_wrap(var ~ tstep, scales = "free_x", strip.position = "top")
+
+
+
+state.dep_4h.p <- ggplot(behav.res.seg.4hr3 |>
+                           mutate(tstep = '4 hr'), aes(x = bin.vals, y = prop,
+                                                       fill = behav1)) +
+  geom_bar(stat = 'identity', position = "dodge") +
+  labs(x = "", y = "Proportion") +
+  theme_bw() +
+  theme(legend.text = element_text(size = 14),
+        legend.position = "top",
+        panel.grid = element_blank(),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_text(size = 14),
+        axis.text.x.bottom = element_text(size = 12, angle = 45, vjust = 1, hjust=1),
+        strip.text = element_text(size = 16),
+        strip.placement = "outside") +
+  scale_fill_manual('', values = MetPalettes$Egypt[[1]], guide = "none") +
+  scale_y_continuous(breaks = c(0.00, 0.50, 1.00)) +
+  facet_wrap(var ~ tstep, scales = "free_x", strip.position = "top")
+
+
+
+state.dep_8h.p <- ggplot(behav.res.seg.8hr3 |>
+                           mutate(tstep = '8 hr'), aes(x = bin.vals, y = prop,
+                                                       fill = behav1)) +
+  geom_bar(stat = 'identity', position = "dodge") +
+  labs(x = "", y = "Proportion") +
+  theme_bw() +
+  theme(legend.text = element_text(size = 14),
+        legend.position = "top",
+        panel.grid = element_blank(),
+        axis.title.y = element_text(size = 18),
+        axis.text.y = element_text(size = 14),
+        axis.text.x.bottom = element_text(size = 12, angle = 45, vjust = 1, hjust=1),
+        strip.text = element_text(size = 16),
+        strip.placement = "outside") +
+  scale_fill_manual('', values = MetPalettes$Egypt[[1]], guide = "none") +
+  scale_y_continuous(breaks = c(0.00, 0.50, 1.00)) +
+  facet_wrap(var ~ tstep, scales = "free_x", strip.position = "top")
+
+
+# create composite plot
+state.dep_1h.p / state.dep_4h.p / state.dep_8h.p
+
+# ggsave("Figures/Fig S5.png", width = 10, height = 12, units = "in", dpi = 400)
+
+
+
+
+
+
+
+#############################
+### Fig S6 for manuscript ###
+#############################
+
+# plot time series of behavior proportions
+
+behav.ts.plot2 <- ggplot(theta.estim.long %>%
+                          filter(id %in% c(205542, 226072))) +
+  geom_area(aes(x = date, y = prop, fill = behavior), color = "black", linewidth = 0.25,
+            position = "fill") +
+  labs(x = "Date", y = "Probability of Behavior") +
+  scale_fill_manual('', values = c(MetPalettes$Egypt[[1]][1:2], "black",
+                                   MetPalettes$Egypt[[1]][3:4])) +
+  theme_bw() +
+  theme(axis.title = element_text(size = 16),
+        axis.text.y = element_text(size = 14),
+        axis.text.x.bottom = element_text(size = 12),
+        strip.text = element_text(size = 14, face = "bold"),
+        panel.grid = element_blank(),
+        legend.position = "top") +
+  facet_grid(time.step ~ id, scales = "free_x")
+
+
+# map behavioral states for focal IDs
+behav.map2 <- ggplot() +
+  # geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
+  geom_path(data = dat.out %>%
+              filter(id %in% c(205542, 226072)), aes(lon, lat), alpha = 0.7) +
+  geom_point(data = dat.out %>%
+               filter(id %in% c(205542, 226072)), aes(lon, lat, color = behav)) +
+  scale_color_manual('', values = c(MetPalettes$Egypt[[1]][1:2], "black",
+                                    MetPalettes$Egypt[[1]][3:4]),
+                     guide = "none", drop = FALSE) +
+  # coord_sf(xlim = c(-40, -32), ylim = c(-7, -3)) +
+  labs(x = "Longitude", y = "Latitude") +
+  theme_bw() +
+  theme(strip.text = element_text(face = "bold", size = 14),
+        legend.position = "top",
+        panel.grid = element_blank(),
+        axis.title = element_text(size = 16),
+        axis.text = element_text(size = 10),
+        legend.title = element_text(size = 16)) +
+  facet_grid(time.step ~ id)
+
+
+behav.ts.plot2 + behav.map2 + plot_annotation(tag_levels = 'a', tag_suffix = ')') +
+  plot_layout(guides = "collect") & theme(legend.position = "bottom",
+                                          legend.text = element_text(size = 14),
+                                          plot.tag = element_text(size = 16))
+
+# ggsave("Figures/Fig S6.png", width = 12, height = 8, units = "in", dpi = 400)
+
+
+
 
 
 #### Export datasets for easy loading ####

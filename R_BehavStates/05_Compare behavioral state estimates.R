@@ -5,10 +5,10 @@
 
 library(tidyverse)
 library(lubridate)
-library(aniMotum)  #v1.0-7
-library(momentuHMM)  #v1.5.4
-library(bayesmove)  #v0.2.1
-library(sf)  #v1.0.7
+library(aniMotum)
+library(momentuHMM)
+library(bayesmove)
+library(sf)
 library(rnaturalearth)
 library(plotly)
 library(wesanderson)
@@ -30,8 +30,8 @@ ssm_res<- join(ssm = fit_crw_8hr,
                mpm = fit_crw_mpm_8hr,
                what.ssm = "predicted")
 
-hmm_res <- dat3 %>%
-  mutate(state = viterbi(fit_hmm_3states_3vars))
+hmm_res <- dat_8hr_3 %>%
+  mutate(state = viterbi(fit_8hr_3states))
 
 bayes_res <- dat.out.8hr
 
@@ -40,23 +40,27 @@ bayes_res <- dat.out.8hr
 #### Compare state-dependent distributions from HMM and M4 (bayesmove) ####
 
 # HMM
-plot(fit_hmm_3states_3vars, plotTracks = FALSE)
+plot(fit_8hr_3states, plotTracks = FALSE)
 
 
 # M4
-behav.res.seg2 <- behav.res.seg %>%
-  mutate(behav1 = case_when(behav == 1 ~ 'Breeding_Encamped',
-                           behav == 2 ~ 'Migratory',
-                           behav == 3 ~ 'Foraging1',
-                           behav == 4 ~ 'Foraging2',
-                           behav == 5 ~ 'Breeding_ARS',
-                           TRUE ~ behav)) %>%
-  filter(!behav %in% c(6,7)) %>%
-  mutate(across(behav1, factor, levels = c('Breeding_Encamped','Breeding_ARS','Foraging1',
-                                           'Foraging2','Migratory')))
+behav.res.seg.8hr3 <- behav.res.seg.8hr2 %>%
+  mutate(behav1 = case_when(behav == 1 ~ 'Migratory',
+                            behav == 2 ~ 'Breeding_ARS',
+                            behav == 3 ~ 'Breeding_Encamped',
+                            behav == 4 ~ 'Foraging',
+                            TRUE ~ behav)) %>%
+  filter(behav %in% 1:4) %>%
+  mutate(across(behav1, \(x) factor(x, levels = c('Breeding_Encamped','Breeding_ARS',
+                                                  'Breeding_Exploratory', 'Foraging',
+                                                  'Migratory'))
+  )) %>%
+  mutate(across(var, \(x) factor(x, levels = unique(var))))
+levels(behav.res.seg.8hr3$var) <- c("Step Length (km)", "Turning Angle (rad)",
+                                    "Displacement (km)")
 
 
-ggplot(behav.res.seg2, aes(x = bin.vals, y = prop, fill = behav1)) +
+ggplot(behav.res.seg.8hr3, aes(x = bin.vals, y = prop, fill = behav1)) +
   geom_bar(stat = 'identity') +
   labs(x = "\nBin", y = "Proportion\n") +
   theme_bw() +
@@ -79,11 +83,11 @@ ggplot(behav.res.seg2, aes(x = bin.vals, y = prop, fill = behav1)) +
 plot(fit_crw_mpm_8hr)
 
 # HMM
-plotStates(fit_hmm_3states_3vars)
+plotStates(fit_8hr_3states)
 
 # M4
-ggplot(theta.estim.long) +
-  geom_area(aes(x=date, y=prop, fill = behavior), color = "black", size = 0.25,
+ggplot(theta.estim.long.8hr) +
+  geom_area(aes(x=date, y=prop, fill = behavior), color = "black", linewidth = 0.25,
             position = "fill") +
   labs(x = "\nTime", y = "Proportion of Behavior\n") +
   scale_fill_viridis_d("Behavior") +
@@ -99,7 +103,7 @@ ggplot(theta.estim.long) +
 
 #### Viz map of behavioral state estimates across methods ####
 
-brazil <- ne_countries(scale = 50, country = "brazil", returnclass = 'sf') %>%
+brazil <- ne_countries(scale = 10, country = "brazil", returnclass = 'sf') %>%
   st_transform(crs = "+proj=merc +lon_0=0 +datum=WGS84 +units=km +no_defs")
 
 
@@ -112,7 +116,7 @@ ssm_res_205537 <- filter(ssm_res, id == 205537)
 ggplotly(
   ggplot() +
     geom_sf(data = brazil) +
-    geom_path(data = ssm_res_205537, aes(x=x, y=y), color="grey60", size=0.25) +
+    geom_path(data = ssm_res_205537, aes(x=x, y=y), color="grey60", linewidth=0.25) +
     geom_point(data = ssm_res_205537, aes(x, y, color=g), size=1.5, alpha=0.7) +
     geom_point(data = ssm_res_205537 %>%
                  slice(which(row_number() == 1)), aes(x, y), color = "green", pch = 21,
@@ -141,7 +145,7 @@ hmm_res_205537 <- hmm_res %>%
 ggplotly(
   ggplot() +
     geom_sf(data = brazil) +
-    geom_path(data = hmm_res_205537, aes(x=x, y=y), color="grey60", size=0.25) +
+    geom_path(data = hmm_res_205537, aes(x=x, y=y), color="grey60", linewidth=0.25) +
     geom_point(data = hmm_res_205537, aes(x, y, color=state1), size=1.5, alpha=0.7) +
     geom_point(data = hmm_res_205537 %>%
                  slice(which(row_number() == 1)), aes(x, y), color = "green", pch = 21,
@@ -167,7 +171,7 @@ bayes_res_205537 <- bayes_res %>%
 ggplotly(
   ggplot() +
     geom_sf(data = brazil) +
-    geom_path(data = bayes_res_205537, aes(x=x, y=y), color="grey60", size=0.25) +
+    geom_path(data = bayes_res_205537, aes(x=x, y=y), color="grey60", linewidth=0.25) +
     geom_point(data = bayes_res_205537, aes(x, y, color=behav), size=1.5, alpha=0.7) +
     geom_point(data = bayes_res_205537 %>%
                  slice(which(row_number() == 1)), aes(x, y), color = "green", pch = 21,
@@ -188,7 +192,7 @@ ggplotly(
 ggplotly(
   ggplot() +
     geom_sf(data = brazil) +
-    geom_path(data = bayes_res_205537, aes(x=x, y=y), color="grey60", size=0.25) +
+    geom_path(data = bayes_res_205537, aes(x=x, y=y), color="grey60", linewidth=0.25) +
     geom_point(data = bayes_res_205537, aes(x, y, color=Foraging), size=1.5, alpha=0.7) +
     geom_point(data = bayes_res_205537 %>%
                  slice(which(row_number() == 1)), aes(x, y), color = "green", pch = 21,
@@ -196,7 +200,7 @@ ggplotly(
     geom_point(data = bayes_res_205537 %>%
                  slice(which(row_number() == n())), aes(x, y), color = "red", pch = 24,
                size = 3, stroke = 1.25) +
-    scale_color_viridis_c("Bayesian M4 Behavior", option = 'inferno', end = 0.95) +
+    scale_color_viridis_c("Prob. Foraging (M4)", option = 'inferno', end = 0.95) +
     labs(x = "Easting", y = "Northing") +
     theme_bw() +
     theme(axis.title = element_text(size = 16),
@@ -209,10 +213,9 @@ ggplotly(
 
 
 
-### Create Supplemental Figures ###
-
-brazil_hires <- ne_countries(scale = 10, country = "brazil", returnclass = 'sf') %>%
-  st_transform(crs = "+proj=merc +lon_0=0 +datum=WGS84 +units=km +no_defs")
+#############################
+### Fig S8 for manuscript ###
+#############################
 
 pal1 <- c(wes_palettes$Darjeeling1,
           wes_palettes$Darjeeling2,
@@ -220,7 +223,7 @@ pal1 <- c(wes_palettes$Darjeeling1,
           wes_palettes$Rushmore1)
 
 m4.map.p <- ggplot() +
-  geom_sf(data = brazil_hires) +
+  geom_sf(data = brazil) +
   geom_path(data = bayes_res, aes(x, y, group = id), color = "grey60", linewidth = 0.25) +
   geom_point(data = bayes_res, aes(x, y, color = behav), size = 1.5, alpha = 0.7) +
   scale_color_viridis_d("M4 Behavioral State") +
@@ -244,6 +247,8 @@ disp.ts.p <- ggplot(bayes_res) +
         legend.text = element_text(size = 10)) +
   guides(color = guide_legend(ncol = 2, override.aes = list(linewidth = 1)))
 
-m4.map.p / disp.ts.p  + plot_annotation(tag_levels = 'a', tag_suffix = ')')
+m4.map.p / disp.ts.p + plot_layout(heights = c(1,1)) +
+  plot_annotation(tag_levels = 'a', tag_suffix = ')') &
+  theme(plot.tag = element_text(size = 16))
 
-# ggsave("Figures/Fig SX2.png", width = 8, height = 6, units = "in", dpi = 400)
+# ggsave("Figures/Fig S8.png", width = 8, height = 6, units = "in", dpi = 400)
