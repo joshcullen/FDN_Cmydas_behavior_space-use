@@ -482,16 +482,22 @@ pal1 <- c(wes_palettes$Darjeeling1,
           wes_palettes$Cavalcanti1,
           wes_palettes$Rushmore1)
 
+brazil_states<- ne_states(country = "Brazil", returnclass = 'sf')
+
 tracks.plot <- ggplot() +
-  geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
-  geom_path(data = res_crw_fitted, aes(lon, lat, group = id, color = id), size = 0.75,
+  geom_sf(data = brazil_states, fill = "grey60", size = 0.3, color = "black") +
+  geom_path(data = res_crw_fitted, aes(lon, lat, group = id, color = id), linewidth = 0.75,
             alpha = 0.8) +
   scale_color_manual(values = pal1, guide = "none") +
-  geom_point(data = res_crw_fitted[1,], aes(lon, lat), size = 4, alpha = 0.8, shape = 21,
+  geom_point(data = res_crw_fitted[1,], aes(lon, lat), size = 5, alpha = 0.8, shape = 21,
              fill = "gold", stroke = 1) +
   labs(x = "Longitude", y = "Latitude") +
-  geom_text(aes(label = "Brazil", x = -37, y = -6), size = 12, fontface = "italic") +
+  # geom_text(aes(label = "Brazil", x = -37, y = -6), size = 12, fontface = "italic") +
   geom_text(aes(label = "Fernando de Noronha", x = -33, y = -3.5), size = 4) +
+  geom_sf_text(data = brazil_states |>
+                 filter(postal %in% c('PI','CE','RN','PB')), aes(label = name),
+               fontface = "italic", size = 4, check_overlap = TRUE,
+               nudge_y = c(2.5, 1, 0.25, 0)) +
   annotation_scale(location = "bl", width_hint = 0.5, style = "ticks",
                    line_col = "black", text_col = "black", line_width = 3,
                    text_cex = 1, text_face = "bold") +

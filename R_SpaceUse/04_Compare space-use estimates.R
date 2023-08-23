@@ -116,15 +116,17 @@ mig.plot <- ggplot() +
         axis.title = element_text(size = 14),
         axis.text = element_text(size = 8),
         strip.text = element_text(size = 12, face = "bold"),
-        legend.text = element_text(size = 10),
+        legend.text = element_text(size = 14),
         legend.title = element_blank()) +
+  guides(color = guide_legend(override.aes = list(linewidth = 1))) +
   coord_sf(xlim = c(min(dat$x) - 100, max(dat$x) + 100),
            ylim = c(min(dat$y) - 100, max(dat$y) + 100)) +
   facet_grid(id ~ level)
 
 
 res.dat <- dat %>%
-  filter(id %in% c(205542, 226069, 226072))
+  filter(id %in% c(205542, 226069, 226072)) |>
+  mutate(id = as.character(id))
 res.plot <- ggplot() +
   # geom_sf(data = brazil) +
   geom_path(data = res.dat, aes(x, y, group = id), linewidth = 0.5, alpha = 0.25) +
@@ -140,8 +142,9 @@ res.plot <- ggplot() +
         axis.title = element_text(size = 14),
         axis.text = element_text(size = 8),
         strip.text = element_text(size = 12, face = "bold"),
-        legend.text = element_text(size = 10),
+        legend.text = element_text(size = 14),
         legend.title = element_blank()) +
+  guides(color = guide_legend(override.aes = list(linewidth = 1))) +
   coord_sf(xlim = c(min(res.dat$x) - 1, max(res.dat$x) + 1),
            ylim = c(min(res.dat$y) - 1, max(res.dat$y) + 1)) +
   facet_grid(id ~ level)
