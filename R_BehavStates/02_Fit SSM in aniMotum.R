@@ -534,8 +534,14 @@ geom_sf(data = brazil_states, fill = "grey60", size = 0.3, color = "black") +
 
 
 
-fdn.bathym <- fdn.bathym2 <- crop(bathym, ext(c(-32.6, -32.3, -3.95, -3.75)))
-fdn.bathym2[fdn.bathym2 > 0] <- NA
+# fdn.bathym <- fdn.bathym2 <- crop(bathym, ext(c(-32.6, -32.3, -3.95, -3.75)))
+# fdn.bathym2[fdn.bathym2 > 0] <- NA
+fdn.isobath <- st_read("Raw_data/FDN_isobaths/BATIMETRIA_SRTM_30_LINHA_SIRGAS_2000.shp") |>
+  st_transform(4326) |>
+  filter(PROFUNDIDA %in% c(-50,-200)) |>
+  st_crop(xmin = -32.6, xmax = -32.3, ymin = -3.95, ymax = -3.75) |>
+  slice(1:2)
+fdn.isobath$PROFUNDIDA <- c("50 m", "200 m")
 fdn.sf <- st_read_parquet('Raw_data/Brazil_land.parquet') |>
   st_transform(4326)
 
@@ -544,7 +550,8 @@ residents <- c(205542, 205544, 226069, 226071, 226072)
 resident.plot <- ggplot() +
   # tidyterra::geom_spatraster(data = fdn.bathym2) +
   geom_sf(data = fdn.sf, fill = "grey70", size = 0.3, color = "black") +
-  # geom_textpath(data = isobath, aes(x = x, y = y), label = "200 m", hjust = 0.8, linewidth = 0.5) +
+  geom_textsf(data = fdn.isobath, aes(label = PROFUNDIDA), hjust = 0.665, linewidth = 0.5,
+              text_smoothing = 0.1) +
   geom_path(data = res_crw_fitted |>
               filter(id %in% residents), aes(lon, lat, group = id, color = id), linewidth = 0.75,
             alpha = 0.8) +
