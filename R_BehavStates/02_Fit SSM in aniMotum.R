@@ -8,6 +8,8 @@ library(lubridate)
 library(aniMotum)
 library(sf)
 library(rnaturalearth)
+library(terra)
+library(sfarrow)
 library(tictoc)
 library(plotly)
 library(future)
@@ -16,7 +18,9 @@ library(ggspatial)
 library(wesanderson)
 library(giscoR)
 library(ggshadow)
+library(geomtextpath)
 
+source('R_BehavStates/helper functions.R')
 
 
 #### Load data ####
@@ -477,6 +481,20 @@ ggplot() +
 ### Fig 1 for manuscript ###
 ############################
 
+# Load bathymetry
+bathym <- get_elev(rast(ext(c(-43, -31, -9, -1)), crs = 'EPSG:4326',
+                        res = 0.004166667),
+                   maxcell = 5e8)
+isobath <- terra::as.contour(bathym, levels = -200) %>%
+  st_as_sf() %>%
+  st_cast("LINESTRING") %>%
+  slice(1) #%>%  #only keep largest isobath line
+  # st_cast("POINT") %>%
+  # mutate(x = st_coordinates(.)[,1],
+  #        y = st_coordinates(.)[,2]) %>%
+  # st_drop_geometry()
+
+# Create color palette
 pal1 <- c(wes_palettes$Darjeeling1,
           wes_palettes$Darjeeling2,
           wes_palettes$Cavalcanti1,
@@ -485,15 +503,19 @@ pal1 <- c(wes_palettes$Darjeeling1,
 brazil_states<- ne_states(country = "Brazil", returnclass = 'sf')
 
 tracks.plot <- ggplot() +
-  geom_sf(data = brazil_states, fill = "grey60", size = 0.3, color = "black") +
+geom_sf(data = brazil_states, fill = "grey60", size = 0.3, color = "black") +
+  # geom_textpath(data = isobath, aes(x = x, y = y), label = "200 m", hjust = 0.8, linewidth = 0.5) +
+  geom_textsf(data = isobath, label = "200 m", hjust = 0.8, linewidth = 0.5) +
   geom_path(data = res_crw_fitted, aes(lon, lat, group = id, color = id), linewidth = 0.75,
             alpha = 0.8) +
   scale_color_manual(values = pal1, guide = "none") +
   geom_point(data = res_crw_fitted[1,], aes(lon, lat), size = 5, alpha = 0.8, shape = 21,
              fill = "gold", stroke = 1) +
+  # geom_rect(aes(xmin = -32.6, xmax = -32.3, ymin = -3.95, ymax = -3.75),
+  #           color = "dodgerblue3", fill = "transparent", linewidth = 1) +
+  geom_text(aes(label = "b)", x = -32.1, y = -3.9), size = 4) +
   labs(x = "Longitude", y = "Latitude") +
-  # geom_text(aes(label = "Brazil", x = -37, y = -6), size = 12, fontface = "italic") +
-  geom_text(aes(label = "Fernando de Noronha", x = -33, y = -3.5), size = 4) +
+  geom_text(aes(label = "Fernando de Noronha", x = -33, y = -3.5), size = 4, fontface = "bold") +
   geom_sf_text(data = brazil_states |>
                  filter(postal %in% c('PI','CE','RN','PB')), aes(label = name),
                fontface = "italic", size = 4, check_overlap = TRUE,
@@ -501,11 +523,44 @@ tracks.plot <- ggplot() +
   annotation_scale(location = "bl", width_hint = 0.5, style = "ticks",
                    line_col = "black", text_col = "black", line_width = 3,
                    text_cex = 1, text_face = "bold") +
+  annotation_north_arrow(location = "br", which_north = "true",
+                         style = north_arrow_fancy_orienteering) +
   theme_bw() +
   theme(panel.grid = element_blank(),
         axis.title = element_text(size = 18),
         axis.text = element_text(size = 14)) +
   coord_sf(xlim = c(-42, -32), ylim = c(-8, -2))
+
+
+
+
+fdn.bathym <- fdn.bathym2 <- crop(bathym, ext(c(-32.6, -32.3, -3.95, -3.75)))
+fdn.bathym2[fdn.bathym2 > 0] <- NA
+fdn.sf <- st_read_parquet('Raw_data/Brazil_land.parquet') |>
+  st_transform(4326)
+
+residents <- c(205542, 205544, 226069, 226071, 226072)
+
+resident.plot <- ggplot() +
+  # tidyterra::geom_spatraster(data = fdn.bathym2) +
+  geom_sf(data = fdn.sf, fill = "grey70", size = 0.3, color = "black") +
+  # geom_textpath(data = isobath, aes(x = x, y = y), label = "200 m", hjust = 0.8, linewidth = 0.5) +
+  geom_path(data = res_crw_fitted |>
+              filter(id %in% residents), aes(lon, lat, group = id, color = id), linewidth = 0.75,
+            alpha = 0.8) +
+  scale_color_manual(values = pal1[unique(res_crw_fitted$id) %in% residents], guide = "none") +
+  geom_text(aes(label = "Fernando de Noronha", x = -32.42, y = -3.85), size = 5) +
+  labs(x = "Longitude", y = "Latitude") +
+  annotation_scale(location = "bl", width_hint = 0.5, style = "ticks",
+                   line_col = "black", text_col = "black", line_width = 3,
+                   text_cex = 1, text_face = "bold") +
+  theme_bw() +
+  theme(panel.grid = element_blank(),
+        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 14)) +
+  coord_sf(xlim = c(-32.48, -32.4), ylim = c(-3.89, -3.84))
+
+
 
 
 # background for the globe - center buffered by earth radius
@@ -568,11 +623,16 @@ inset.plot <- ggplot() +
   theme_void()
 
 
+
 tracks.plot +
   inset_element(inset.plot, left = 0, bottom = 0.17, right = 0.45, top = 0.57,
-                align_to = "plot")
+                align_to = "plot") +
+  resident.plot +
+  plot_layout(nrow = 2, tag_level = "keep") +
+  plot_annotation(tag_levels = list(c("a)","","b)"))) &
+  theme(plot.tag = element_text(size = 22))
 
-# ggsave("Figures/Fig 1.png", width = 8, height = 6, units = "in", dpi = 400)
+# ggsave("Figures/Fig 1_new.png", width = 9, height = 12, units = "in", dpi = 400)
 
 
 

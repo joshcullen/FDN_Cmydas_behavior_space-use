@@ -111,3 +111,17 @@ run.HMMs = function(data, K, Par0, state.names, niter) {
   return(res)
 }
 
+#---------------------------
+
+# function based on that from Michael Sumner Github gist (related to Pull Request for {terra})
+# https://gist.github.com/mdsumner/aaa6f1d2c1ed107fbdd7e83f509a7cf3
+get_elev <- function(x, method = "bilinear", maxcell = 25e6, silent = TRUE) {
+  if (terra::ncell(x) > maxcell) {
+    stop("number of cells in x exceeds 'maxcell'")
+  }
+
+  src <- "/vsicurl/https://gebco2023.s3.valeria.science/gebco_2023_land_cog.tif"
+  # src <- "/vsicurl/https://public.services.aad.gov.au/datasets/science/GEBCO_2021_GEOTIFF/GEBCO_2021.tif"
+
+  terra::project(terra::rast(src), x, by_util = TRUE, method = method)
+}
