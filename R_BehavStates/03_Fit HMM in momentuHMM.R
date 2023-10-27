@@ -763,8 +763,10 @@ state.dep.dist <- state.dep.dist.list %>%
 # plot state-dependent distributions (8 hr time step)
 state.dep.plot <- ggplot() +
   geom_line(data = state.dep.dist %>%
-              filter(tstep == '8hr'), aes(x = x, y = density, color = state), linewidth=1) +
-  scale_color_manual('', values = MetPalettes$Egypt[[1]][c(1,3,4)]) +
+              mutate(state = factor(state, levels = c("Breeding", "Migratory", "Foraging"))) %>%
+              filter(tstep == '8hr'),
+            aes(x = x, y = density, color = state), linewidth = 1) +
+  scale_color_manual('', values = MetPalettes$Egypt[[1]][c(1,4,3)]) +
   labs(x = "", y = "Density") +
   theme_bw() +
   theme(legend.text = element_text(size = 14),
@@ -810,7 +812,8 @@ behav.map <- ggplot() +
   coord_sf(xlim = c(-40, -32), ylim = c(-7, -3)) +
   labs(x = "Longitude", y = "Latitude") +
   theme_bw() +
-  scale_x_continuous(guide = guide_axis(check.overlap = TRUE)) +
+  scale_x_continuous(breaks = seq(-39, -33, by = 3)) +
+  scale_y_continuous(breaks = seq(-6, -4, by = 2)) +
   theme(strip.text = element_text(face = "bold", size = 10),
         legend.position = "top",
         panel.grid = element_blank(),
@@ -820,7 +823,10 @@ behav.map <- ggplot() +
   facet_grid(time.step ~ ID)
 
 
-state.dep.plot / (behav.ts.plot + behav.map) + plot_annotation(tag_levels = 'a', tag_suffix = ')') & theme(plot.tag = element_text(size = 16))
+state.dep.plot + (behav.ts.plot + behav.map) +
+  plot_layout(nrow = 2) +
+  plot_annotation(tag_levels = 'a', tag_suffix = ')') &
+  theme(plot.tag = element_text(size = 16))
 
 # ggsave("Figures/Fig 3.png", width = 10, height = 7, units = "in", dpi = 400)
 
