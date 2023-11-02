@@ -19,6 +19,7 @@ library(wesanderson)
 library(giscoR)
 library(ggshadow)
 library(geomtextpath)
+library(ggtext)
 
 source('R_BehavStates/helper functions.R')
 
@@ -666,11 +667,26 @@ res_crw_8hr <- res_crw_8hr %>%
 all.mods <- rbind(res_crw_fitted, res_crw_1hr, res_crw_4hr, res_crw_8hr)
 all.mods$time.step <- factor(all.mods$time.step, levels = c("Irregular","1hr","4hr","8hr"))
 
+# Create date labels for annotating both plots
+date.labs <- res_crw_8hr %>%
+  filter(id %in% c(205540, 41614)) |>
+  mutate(date = as_date(date)) |>
+  group_by(id, date) |>
+  slice(1) |>
+  ungroup() |>
+  filter(id == 205540 & date %in% c('2021-02-20','2021-03-20','2021-04-20') |
+         id == 41614 & date %in% c('2022-02-01','2022-03-01','2022-04-01')) |>
+  dplyr::select(id, date, lon, lat, x, y, g) |>
+  mutate(time.step = factor("Irregular", levels = levels(all.mods$time.step)))
+
+
+
 behav.ts.plot <- ggplot() +
   geom_line(data = all.mods %>%
               filter(id == 205540 | id == 41614), aes(date, g, color = time.step),
             alpha = 0.7, linewidth = 1) +
   scale_color_manual("Time Step", values = RColorBrewer::brewer.pal(4, "Dark2")) +
+  geom_rug(data = date.labs, aes(as_datetime(date)), linewidth = 1, length = unit(0.05, "npc")) +
   labs(x = 'Date', y = expression(gamma)) +
   theme_bw() +
   theme(strip.text = element_text(face = "bold", size = 10),
@@ -684,7 +700,8 @@ behav.ts.plot <- ggplot() +
   facet_wrap(~id, scales = "free_x", ncol = 1)
 
 
-behav.map <- ggplot() +
+behav.map <-
+  ggplot() +
   geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
   geom_path(data = all.mods %>%
               filter(id %in% c(205540, 41614)), aes(lon, lat), alpha = 0.7) +
@@ -692,6 +709,45 @@ behav.map <- ggplot() +
                filter(id %in% c(205540, 41614)), aes(lon, lat, color = g)) +
   scale_color_viridis_c(expression(gamma), option = 'inferno', breaks = c(0,0.25,0.5,0.75,1),
                         limits = c(0,1)) +
+  geom_textbox(data = date.labs,
+                       aes(x = lon,
+                           y = lat,
+                           label = format(date, "%d %b %Y"),
+                           hjust = case_when(id == 41614 ~ 0.5,
+                                             id == 205540 & date == '2021-03-20' ~ 0.2,
+                                             id == 205540 & date == '2021-02-20' ~ 0.3,
+                                             TRUE ~ 0.1),
+                       vjust = case_when(id == 41614 ~ 0.3,
+                                         date == '2021-04-20' ~ 2.5,
+                                         date == '2021-03-20' ~ 1,
+                                         date == '2021-02-20' ~ 0)),
+                       size = 3,
+                       fill = NA,
+                       box.colour = NA) +
+  geom_curve(data = date.labs |>
+               filter(id == 41614),
+             aes(x = lon - 1.1,
+                 y = lat + 0.3,
+                 xend = lon,
+                 yend = lat),
+             curvature = -0.1,
+             arrow = arrow(length = unit(0.1, "cm")),
+             alpha = 0.5) +
+  geom_curve(data = date.labs |>
+               filter(id == 205540),
+             aes(x = case_when(date == '2021-04-20' ~ lon - 0.1,
+                               date == '2021-03-20' ~ lon - 0.3,
+                               date == '2021-02-20' ~ lon - 0.1),
+                 y = case_when(date == '2021-04-20' ~ lat - 2.1,
+                               date == '2021-03-20' ~ lat - 0.3,
+                               date == '2021-02-20' ~ lat + 0.3),
+                 xend = lon,
+                 yend = lat),
+             curvature = -0.1,
+             arrow = arrow(length = unit(0.1, "cm")),
+             alpha = 0.5) +
+    scale_x_continuous(breaks = seq(-39, -33, by = 3)) +
+    scale_y_continuous(breaks = seq(-6, -4, by = 2)) +
   coord_sf(xlim = c(-40, -32), ylim = c(-7, -3)) +
   labs(x = "Longitude", y = "Latitude") +
   theme_bw() +
