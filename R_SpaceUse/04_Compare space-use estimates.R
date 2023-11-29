@@ -111,10 +111,12 @@ mig.plot <- ggplot() +
   scale_color_met_d("Hokusai3", direction = -1) +
   labs(x = "Longitude", y = "Latitude", title = "Migratory") +
   theme_bw() +
-  scale_x_continuous(guide = guide_axis(check.overlap = TRUE)) +
+  scale_x_continuous(breaks = seq(-42, -33, by = 3)) +
+  scale_y_continuous(breaks = seq(-8, -2, by = 2)) +
   theme(panel.grid = element_blank(),
+        plot.title = element_text(size = 18),
         axis.title = element_text(size = 14),
-        axis.text = element_text(size = 8),
+        axis.text = element_text(size = 10),
         strip.text = element_text(size = 12, face = "bold"),
         legend.text = element_text(size = 14),
         legend.title = element_blank()) +
@@ -137,10 +139,12 @@ res.plot <- ggplot() +
   scale_color_met_d("Hokusai3", direction = -1) +
   labs(x = "Longitude", y = "Latitude", title = 'Resident') +
   theme_bw() +
-  scale_x_continuous(guide = guide_axis(check.overlap = TRUE)) +
+  scale_x_continuous(breaks = seq(-32.47, -32.41, by = 0.03)) +
+  scale_y_continuous(breaks = seq(-3.89, -3.85, by = 0.02)) +
   theme(panel.grid = element_blank(),
+        plot.title = element_text(size = 18),
         axis.title = element_text(size = 14),
-        axis.text = element_text(size = 8),
+        axis.text = element_text(size = 10),
         strip.text = element_text(size = 12, face = "bold"),
         legend.text = element_text(size = 14),
         legend.title = element_blank()) +
@@ -155,7 +159,7 @@ mig.plot + res.plot +
   plot_annotation(tag_levels = 'a', tag_suffix = ')') +
   plot_layout(guides = 'collect') & theme(plot.tag = element_text(size = 16))
 
-# ggsave("Figures/Fig 5.png", width = 12, height = 5, units = "in", dpi = 400)
+ggsave("Figures/Fig 5.png", width = 12, height = 5, units = "in", dpi = 400)
 
 
 

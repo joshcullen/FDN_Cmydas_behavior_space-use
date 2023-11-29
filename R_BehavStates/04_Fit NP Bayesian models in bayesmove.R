@@ -1258,10 +1258,11 @@ behav.res.seg <- behav.res.seg.8hr2 %>%
                             behav == 4 ~ 'Foraging',
                             TRUE ~ behav)) %>%
   filter(!behav %in% c(8,9)) %>%
-  mutate(across(behav1, factor, levels = c('Breeding_Encamped','Breeding_ARS',
+  mutate(behav1 = factor(behav1, levels = c('Breeding_Encamped','Breeding_ARS',
                                            'Breeding_Exploratory','Foraging',
-                                           'Migratory'))) %>%
-  mutate(across(var, factor, levels = unique(var)))
+                                           'Migratory'))
+         ) %>%
+  mutate(var = factor(var, levels = unique(var)))
 levels(behav.res.seg$var) <- c("Step Length (km)", "Turning Angle (rad)", "Displacement (km)")
 
 state.dep.plot <- ggplot(behav.res.seg, aes(x = bin.vals, y = prop, fill = behav1)) +
@@ -1294,12 +1295,13 @@ theta.estim.long <- list(`1 hr` = theta.estim.long.1hr,
 
 behav.ts.plot <- ggplot(theta.estim.long %>%
          filter(id %in% c(205540, 41614))) +
-  geom_area(aes(x = date, y = prop, fill = behavior), color = "black", size = 0.25,
+  geom_area(aes(x = date, y = prop, fill = behavior), color = "black", linewidth = 0.25,
             position = "fill") +
   labs(x = "Date", y = "Probability of Behavior") +
   scale_fill_manual('',
                     values = c(MetPalettes$Egypt[[1]][1:2], "black",
                                MetPalettes$Egypt[[1]][3:4]), guide = "none") +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.5)) +
   theme_bw() +
   theme(axis.title = element_text(size = 16),
         axis.text.y = element_text(size = 14),
@@ -1327,6 +1329,8 @@ behav.map <- ggplot() +
   coord_sf(xlim = c(-40, -32), ylim = c(-7, -3)) +
   labs(x = "Longitude", y = "Latitude") +
   theme_bw() +
+  scale_x_continuous(breaks = seq(-39, -33, by = 3)) +
+  scale_y_continuous(breaks = seq(-6, -4, by = 2)) +
   theme(strip.text = element_text(face = "bold", size = 10),
         legend.position = "top",
         panel.grid = element_blank(),
@@ -1336,7 +1340,8 @@ behav.map <- ggplot() +
   facet_grid(time.step ~ id)
 
 
-state.dep.plot / (behav.ts.plot + behav.map) +
+state.dep.plot + (behav.ts.plot + behav.map) +
+  plot_layout(nrow = 2) +
   plot_annotation(tag_levels = 'a', tag_suffix = ')') &
   theme(plot.tag = element_text(size = 20))
 
