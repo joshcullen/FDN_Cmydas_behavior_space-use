@@ -807,7 +807,8 @@ behav.map <- ggplot() +
   # coord_sf(xlim = c(-40, -32), ylim = c(-7, -3)) +
   labs(x = "Longitude", y = "Latitude") +
   theme_bw() +
-  scale_x_continuous(guide = guide_axis(check.overlap = TRUE)) +
+  scale_x_continuous(breaks = seq(-32.47, -32.41, by = 0.03), limits = c(-32.47, -32.40)) +
+  scale_y_continuous(breaks = seq(-3.88, -3.86, by = 0.02), limits = c(-3.89, -3.85)) +
   theme(strip.text = element_text(face = "bold", size = 10),
         legend.position = "top",
         panel.grid = element_blank(),

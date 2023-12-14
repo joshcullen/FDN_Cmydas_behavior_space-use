@@ -1579,20 +1579,23 @@ behav.map2 <- ggplot() +
                      guide = "none", drop = FALSE) +
   # coord_sf(xlim = c(-40, -32), ylim = c(-7, -3)) +
   labs(x = "Longitude", y = "Latitude") +
+  scale_x_continuous(breaks = seq(-32.47, -32.41, by = 0.03), limits = c(-32.47, -32.40)) +
   theme_bw() +
   theme(strip.text = element_text(face = "bold", size = 14),
         legend.position = "top",
         panel.grid = element_blank(),
-        axis.title = element_text(size = 16),
-        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 14),
         legend.title = element_text(size = 16)) +
   facet_grid(time.step ~ id)
 
 
-behav.ts.plot2 + behav.map2 + plot_annotation(tag_levels = 'a', tag_suffix = ')') +
-  plot_layout(guides = "collect") & theme(legend.position = "bottom",
-                                          legend.text = element_text(size = 14),
-                                          plot.tag = element_text(size = 16))
+behav.ts.plot2 + behav.map2 +
+  plot_annotation(tag_levels = 'a', tag_suffix = ')') +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom",
+        legend.text = element_text(size = 14),
+        plot.tag = element_text(size = 18))
 
 # ggsave("Figures/Fig S6.png", width = 12, height = 8, units = "in", dpi = 400)
 

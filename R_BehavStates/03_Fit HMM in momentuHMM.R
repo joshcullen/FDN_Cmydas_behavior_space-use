@@ -884,6 +884,7 @@ behav.res.map <- ggplot() +
   scale_color_manual('', values = MetPalettes$Egypt[[1]][c(1,4,3)], guide = "none") +
   # coord_sf(xlim = c(-32.46, -32.41), ylim = c(-3.89, -3.85)) +
   labs(x = "Longitude", y = "Latitude") +
+  scale_x_continuous(breaks = seq(-32.47, -32.41, by = 0.03), limits = c(-32.47, -32.40)) +
   theme_bw() +
   theme(strip.text = element_text(face = "bold", size = 10),
         legend.position = "top",
@@ -894,7 +895,9 @@ behav.res.map <- ggplot() +
   facet_grid(time.step ~ ID)
 
 
-behav.ts.res.plot + behav.res.map + plot_annotation(tag_levels = 'a', tag_suffix = ')')
+behav.ts.res.plot + behav.res.map +
+  plot_annotation(tag_levels = 'a', tag_suffix = ')') &
+  theme(plot.tag = element_text(size = 16))
 
 # ggsave("Figures/Fig S4.png", width = 12, height = 7, units = "in", dpi = 400)
 
