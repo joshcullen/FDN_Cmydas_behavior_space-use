@@ -82,6 +82,7 @@ ggplot() +
               filter(id %in% residents), aes(x, y, group = id), linewidth = 0.5,
             alpha = 0.15) +
   geom_sf(data = ud.all |>
+            mutate(id = as.integer(id)) |>
             filter(id %in% residents), aes(color = method), fill = "transparent",
           linewidth = 0.5) +
   scale_color_met_d('Egypt') +
@@ -102,9 +103,10 @@ ud.all$level <- ifelse(ud.all$level == 0.5, "50%", "95%")
 mig.ids <- c(205538, 226066, 226070)
 mig.plot <- ggplot() +
   geom_sf(data = brazil) +
-  geom_path(data = dat %>%
+  geom_path(data = dat |>
               filter(id %in% mig.ids), aes(x, y, group = id), linewidth = 0.5, alpha = 0.5) +
-  geom_sf(data = ud.all %>%
+  geom_sf(data = ud.all |>
+            mutate(id = as.integer(id)) |>
             filter(id %in% mig.ids), aes(color = method), fill = "transparent",
           linewidth = 0.5) +
   # scale_color_manual("", values = c(MetPalettes$Juarez[[1]][c(1:3)], MetPalettes$VanGogh3[[1]][5])) +
@@ -126,20 +128,20 @@ mig.plot <- ggplot() +
   facet_grid(id ~ level)
 
 
-res.dat <- dat %>%
-  filter(id %in% c(205542, 226069, 226072)) |>
-  mutate(id = as.character(id))
+res.dat <- dat |>
+  filter(id %in% c(205542, 226069, 226072))
 res.plot <- ggplot() +
   # geom_sf(data = brazil) +
   geom_path(data = res.dat, aes(x, y, group = id), linewidth = 0.5, alpha = 0.25) +
-  geom_sf(data = ud.all %>%
+  geom_sf(data = ud.all |>
+            mutate(id = as.integer(id)) |>
             filter(id %in% unique(res.dat$id)), aes(color = method), fill = "transparent",
           linewidth = 0.5) +
   # scale_color_manual("", values = c(MetPalettes$Juarez[[1]][c(1:3)], MetPalettes$VanGogh3[[1]][5])) +
   scale_color_met_d("Hokusai3", direction = -1) +
   labs(x = "Longitude", y = "Latitude", title = 'Resident') +
   theme_bw() +
-  scale_x_continuous(breaks = seq(-32.47, -32.41, by = 0.03)) +
+  scale_x_continuous(breaks = seq(-32.45, -32.40, by = 0.05)) +
   scale_y_continuous(breaks = seq(-3.89, -3.85, by = 0.02)) +
   theme(panel.grid = element_blank(),
         plot.title = element_text(size = 18),
@@ -155,11 +157,14 @@ res.plot <- ggplot() +
 
 
 
-mig.plot + res.plot +
+(guide_area() / (mig.plot + res.plot)) +
   plot_annotation(tag_levels = 'a', tag_suffix = ')') +
-  plot_layout(guides = 'collect') & theme(plot.tag = element_text(size = 16))
+  plot_layout(guides = 'collect',
+              heights = unit(c(1, 1), c("cm", "null"))) &
+  theme(plot.tag = element_text(size = 16),
+        legend.position = "top")
 
-ggsave("Figures/Fig 5.png", width = 12, height = 5, units = "in", dpi = 400)
+# ggsave("Figures/Fig 5.png", width = 10, height = 5, units = "in", dpi = 400)
 
 
 
@@ -219,14 +224,16 @@ res.area.plot <- ggplot(ud.all %>%
 ### Fig 6 for manuscript ###
 ############################
 
-iso.plot +
+guide_area() / (iso.plot +
   (strategy.plot + inset_element(res.area.plot, left = 0.35, right = 0.99, bottom = 0.5,
-                                 top = 0.99, align_to = "panel")) +
-  plot_layout(guides = 'collect') +
-  plot_annotation(tag_levels = 'a', tag_suffix = ')') &
-  theme(plot.tag = element_text(size = 16))
+                                 top = 0.99, align_to = "panel"))) +
+  plot_annotation(tag_levels = 'a', tag_suffix = ')') +
+  plot_layout(guides = 'collect',
+              heights = unit(c(1, 1), c("cm", "null"))) &
+  theme(plot.tag = element_text(size = 16),
+        legend.position = "top")
 
-# ggsave("Figures/Fig 6.png", width = 12, height = 5, units = "in", dpi = 400)
+# ggsave("Figures/Fig 6.png", width = 10, height = 5, units = "in", dpi = 400)
 
 
 
