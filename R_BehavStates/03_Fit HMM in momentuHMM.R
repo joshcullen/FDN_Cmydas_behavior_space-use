@@ -761,7 +761,7 @@ state.dep.dist <- state.dep.dist.list %>%
 
 
 # plot state-dependent distributions (8 hr time step)
-state.dep.plot <- ggplot() +
+ggplot() +
   geom_line(data = state.dep.dist %>%
               mutate(state = factor(state, levels = c("Breeding", "Migratory", "Foraging"))) %>%
               filter(tstep == '8hr'),
@@ -778,6 +778,8 @@ state.dep.plot <- ggplot() +
         strip.background = element_blank(),
         strip.placement = "outside") +
   facet_wrap(~ var, scales = "free", strip.position = "bottom")
+
+ggsave("Figures/Fig 3_new.png", width = 9, height = 5, units = "in", dpi = 400)
 
 
 
@@ -805,10 +807,11 @@ behav.ts.plot <- ggplot() +
 behav.map <- ggplot() +
   geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
   geom_path(data = all.fits %>%
-              filter(ID %in% c(205540, 41614)), aes(lon, lat), alpha = 0.7) +
-  geom_point(data = all.fits %>%
-               filter(ID %in% c(205540, 41614)), aes(lon, lat, color = state)) +
-  scale_color_manual('', values = MetPalettes$Egypt[[1]][c(1,4,3)], guide = "none") +
+              filter(ID %in% c(205540, 41614)), aes(lon, lat, group = ID, color = state), alpha = 1, linewidth = 1,
+            linejoin = "round", linemitre = 1) +
+  # geom_point(data = all.fits %>%
+  #              filter(ID %in% c(205540, 41614)), aes(lon, lat, color = state)) +
+  scale_color_manual('', values = MetPalettes$Egypt[[1]][c(1,4,3)]) +
   coord_sf(xlim = c(-40, -32), ylim = c(-7, -3)) +
   labs(x = "Longitude", y = "Latitude") +
   theme_bw() +
@@ -823,12 +826,12 @@ behav.map <- ggplot() +
   facet_grid(time.step ~ ID)
 
 
-state.dep.plot + (behav.ts.plot + behav.map) +
-  plot_layout(nrow = 2) +
+(guide_area() / (behav.ts.plot + behav.map)) +
+  plot_layout(nrow = 2, guides = 'collect', heights = unit(c(1, 1), c("cm", "null"))) +
   plot_annotation(tag_levels = 'a', tag_suffix = ')') &
-  theme(plot.tag = element_text(size = 16))
+  theme(plot.tag = element_text(size = 20), legend.text = element_text(size = 14))
 
-# ggsave("Figures/Fig 3.png", width = 10, height = 7, units = "in", dpi = 400)
+# ggsave("Figures/Fig 4_new.png", width = 12, height = 8, units = "in", dpi = 400)
 
 
 

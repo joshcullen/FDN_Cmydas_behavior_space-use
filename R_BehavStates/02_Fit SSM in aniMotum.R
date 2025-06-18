@@ -4,8 +4,7 @@
 #################################################################################
 
 library(tidyverse)
-library(lubridate)
-library(aniMotum)
+# library(aniMotum)
 library(sf)
 library(rnaturalearth)
 library(terra)
@@ -30,6 +29,20 @@ dat <- read.csv('Processed_data/Cleaned_FDN Cmydas tracks.csv')
 
 glimpse(dat); str(dat)
 summary(dat)
+
+
+# Load bathymetry
+bathym <- get_elev(rast(ext(c(-43, -31, -9, -1)), crs = 'EPSG:4326',
+                        res = 0.004166667),
+                   maxcell = 5e8)
+isobath <- terra::as.contour(bathym, levels = -200) %>%
+  st_as_sf() %>%
+  st_cast("LINESTRING") %>%
+  slice(1) #%>%  #only keep largest isobath line
+# st_cast("POINT") %>%
+# mutate(x = st_coordinates(.)[,1],
+#        y = st_coordinates(.)[,2]) %>%
+# st_drop_geometry()
 
 
 #### Wrangle data for analysis using {aniMotum} ####
@@ -107,6 +120,8 @@ tmp %>%
 #################
 #### Run SSM ####
 #################
+
+library(aniMotum)
 
 # Change `id` to character to avoid problems during model runs
 dat3$id <- as.character(dat3$id)
@@ -482,18 +497,18 @@ ggplot() +
 ### Fig 1 for manuscript ###
 ############################
 
-# Load bathymetry
-bathym <- get_elev(rast(ext(c(-43, -31, -9, -1)), crs = 'EPSG:4326',
-                        res = 0.004166667),
-                   maxcell = 5e8)
-isobath <- terra::as.contour(bathym, levels = -200) %>%
-  st_as_sf() %>%
-  st_cast("LINESTRING") %>%
-  slice(1) #%>%  #only keep largest isobath line
-  # st_cast("POINT") %>%
-  # mutate(x = st_coordinates(.)[,1],
-  #        y = st_coordinates(.)[,2]) %>%
-  # st_drop_geometry()
+# # Load bathymetry
+# bathym <- get_elev(rast(ext(c(-43, -31, -9, -1)), crs = 'EPSG:4326',
+#                         res = 0.004166667),
+#                    maxcell = 5e8)
+# isobath <- terra::as.contour(bathym, levels = -200) %>%
+#   st_as_sf() %>%
+#   st_cast("LINESTRING") %>%
+#   slice(1) #%>%  #only keep largest isobath line
+#   # st_cast("POINT") %>%
+#   # mutate(x = st_coordinates(.)[,1],
+#   #        y = st_coordinates(.)[,2]) %>%
+#   # st_drop_geometry()
 
 # Create color palette
 pal1 <- c(wes_palettes$Darjeeling1,
@@ -553,9 +568,11 @@ resident.plot <- ggplot() +
   geom_sf(data = fdn.sf, fill = "grey70", size = 0.3, color = "black") +
   geom_textsf(data = fdn.isobath, aes(label = PROFUNDIDA), hjust = 0.665, linewidth = 0.5,
               text_smoothing = 0.1) +
-  geom_path(data = res_crw_fitted |>
-              filter(id %in% residents), aes(lon, lat, group = id, color = id), linewidth = 0.75,
-            alpha = 0.8) +
+  # geom_path(data = res_crw_fitted |>
+  #             filter(id %in% residents), aes(lon, lat, group = id, color = id), linewidth = 0.75,
+  #           alpha = 0.8) +
+  geom_point(data = res_crw_fitted |>
+              filter(id %in% residents), aes(lon, lat, color = id), size = 1.5, alpha = 0.35) +
   scale_color_manual(values = pal1[unique(res_crw_fitted$id) %in% residents], guide = "none") +
   geom_text(aes(label = "Fernando de Noronha", x = -32.42, y = -3.85), size = 5) +
   labs(x = "Longitude", y = "Latitude") +
@@ -704,9 +721,10 @@ behav.map <-
   ggplot() +
   geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
   geom_path(data = all.mods %>%
-              filter(id %in% c(205540, 41614)), aes(lon, lat), alpha = 0.7) +
-  geom_point(data = all.mods %>%
-               filter(id %in% c(205540, 41614)), aes(lon, lat, color = g)) +
+              filter(id %in% c(205540, 41614)), aes(lon, lat, color = g), alpha = 1, linewidth = 1,
+            linejoin = "mitre", linemitre = 10) +
+  # geom_point(data = all.mods %>%
+  #              filter(id %in% c(205540, 41614)), aes(lon, lat, color = g), size = 0.75) +
   scale_color_viridis_c(expression(gamma), option = 'inferno', breaks = c(0,0.25,0.5,0.75,1),
                         limits = c(0,1)) +
   geom_textbox(data = date.labs,

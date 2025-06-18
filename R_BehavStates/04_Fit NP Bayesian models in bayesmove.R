@@ -1265,12 +1265,12 @@ behav.res.seg <- behav.res.seg.8hr2 %>%
   mutate(var = factor(var, levels = unique(var)))
 levels(behav.res.seg$var) <- c("Step Length (km)", "Turning Angle (rad)", "Displacement (km)")
 
-state.dep.plot <- ggplot(behav.res.seg, aes(x = bin.vals, y = prop, fill = behav1)) +
+ggplot(behav.res.seg, aes(x = bin.vals, y = prop, fill = behav1)) +
   geom_bar(stat = 'identity', position = "dodge") +
   labs(x = "", y = "Proportion") +
   theme_bw() +
   theme(legend.text = element_text(size = 14),
-        legend.position = "top",
+        legend.position = "none",
         panel.grid = element_blank(),
         axis.title.y = element_text(size = 18),
         axis.text.y = element_text(size = 14),
@@ -1282,8 +1282,10 @@ state.dep.plot <- ggplot(behav.res.seg, aes(x = bin.vals, y = prop, fill = behav
                                    MetPalettes$Egypt[[1]][3:4]),
                     drop = FALSE) +
   scale_y_continuous(breaks = c(0.00, 0.50, 1.00)) +
-  facet_wrap(~ var, scales = "free_x", strip.position = "bottom")
+  # facet_wrap(~ var, scales = "free_x", strip.position = "bottom")
+  facet_grid(behav1 ~ var, scales = "free_x", switch = "x")
 
+ggsave("Figures/Fig 5_new.png", width = 8, height = 11, units = "in", dpi = 400)
 
 
 # plot time series of behavior proportions
@@ -1300,7 +1302,7 @@ behav.ts.plot <- ggplot(theta.estim.long %>%
   labs(x = "Date", y = "Probability of Behavior") +
   scale_fill_manual('',
                     values = c(MetPalettes$Egypt[[1]][1:2], "black",
-                               MetPalettes$Egypt[[1]][3:4]), guide = "none") +
+                               MetPalettes$Egypt[[1]][3:4])) +
   scale_y_continuous(breaks = seq(0, 1, by = 0.5)) +
   theme_bw() +
   theme(axis.title = element_text(size = 16),
@@ -1322,9 +1324,10 @@ dat.out <- list(`1 hr` = dat.out.1hr,
 behav.map <- ggplot() +
   geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
   geom_path(data = dat.out %>%
-              filter(id %in% c(205540, 41614)), aes(lon, lat), alpha = 0.7) +
-  geom_point(data = dat.out %>%
-               filter(id %in% c(205540, 41614)), aes(lon, lat, color = behav)) +
+              filter(id %in% c(205540, 41614)), aes(lon, lat, group = id, color = behav),
+            alpha = 1, linewidth = 1, linejoin = "round", linemitre = 1) +
+  # geom_point(data = dat.out %>%
+  #              filter(id %in% c(205540, 41614)), aes(lon, lat, color = behav)) +
   scale_color_manual('', values = MetPalettes$Egypt[[1]], guide = "none") +
   coord_sf(xlim = c(-40, -32), ylim = c(-7, -3)) +
   labs(x = "Longitude", y = "Latitude") +
@@ -1340,12 +1343,12 @@ behav.map <- ggplot() +
   facet_grid(time.step ~ id)
 
 
-state.dep.plot + (behav.ts.plot + behav.map) +
-  plot_layout(nrow = 2) +
+(guide_area() / (behav.ts.plot + behav.map)) +
+  plot_layout(nrow = 2, guides = 'collect', heights = unit(c(1, 1), c("cm", "null"))) +
   plot_annotation(tag_levels = 'a', tag_suffix = ')') &
-  theme(plot.tag = element_text(size = 20))
+  theme(plot.tag = element_text(size = 20), legend.text = element_text(size = 14))
 
-# ggsave("Figures/Fig 4.png", width = 12, height = 8, units = "in", dpi = 400)
+# ggsave("Figures/Fig 6_new.png", width = 12, height = 8, units = "in", dpi = 400)
 
 
 
