@@ -516,7 +516,7 @@ pal1 <- c(wes_palettes$Darjeeling1,
           wes_palettes$Cavalcanti1,
           wes_palettes$Rushmore1)
 
-brazil_states<- ne_states(country = "Brazil", returnclass = 'sf')
+brazil_states <- ne_states(country = "Brazil", returnclass = 'sf')
 
 tracks.plot <- ggplot() +
 geom_sf(data = brazil_states, fill = "grey60", size = 0.3, color = "black") +
@@ -573,7 +573,9 @@ resident.plot <- ggplot() +
   #           alpha = 0.8) +
   geom_point(data = res_crw_fitted |>
               filter(id %in% residents), aes(lon, lat, color = id), size = 1.5, alpha = 0.35) +
-  scale_color_manual(values = pal1[unique(res_crw_fitted$id) %in% residents], guide = "none") +
+  # scale_color_manual(values = pal1[unique(res_crw_fitted$id) %in% residents], guide = "none") +
+  scale_color_manual("ID", values = pal1[unique(res_crw_fitted$id) %in% residents],
+                     guide = guide_legend(override.aes = list(alpha = 1, size = 2.5))) +
   geom_text(aes(label = "Fernando de Noronha", x = -32.42, y = -3.85), size = 5) +
   labs(x = "Longitude", y = "Latitude") +
   annotation_scale(location = "bl", width_hint = 0.5, style = "ticks",
@@ -582,7 +584,11 @@ resident.plot <- ggplot() +
   theme_bw() +
   theme(panel.grid = element_blank(),
         axis.title = element_text(size = 18),
-        axis.text = element_text(size = 14)) +
+        axis.text = element_text(size = 14),
+        legend.position = "inside",
+        legend.position.inside = c(0.92, 0.19),
+        legend.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        legend.text = element_text(size = 13)) +
   coord_sf(xlim = c(-32.48, -32.4), ylim = c(-3.89, -3.84))
 
 
@@ -721,7 +727,7 @@ behav.map <-
   ggplot() +
   geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
   geom_path(data = all.mods %>%
-              filter(id %in% c(205540, 41614)), aes(lon, lat, color = g), alpha = 1, linewidth = 1,
+              filter(id %in% c(205540, 41614)), aes(lon, lat, color = g), alpha = 1, linewidth = 1.2,
             linejoin = "mitre", linemitre = 10) +
   # geom_point(data = all.mods %>%
   #              filter(id %in% c(205540, 41614)), aes(lon, lat, color = g), size = 0.75) +

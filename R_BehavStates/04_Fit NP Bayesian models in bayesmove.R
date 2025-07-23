@@ -14,6 +14,7 @@ library(furrr)
 library(future)
 library(patchwork)
 library(MetBrewer)
+library(magick)
 
 
 #### Load data ####
@@ -1285,7 +1286,7 @@ ggplot(behav.res.seg, aes(x = bin.vals, y = prop, fill = behav1)) +
   # facet_wrap(~ var, scales = "free_x", strip.position = "bottom")
   facet_grid(behav1 ~ var, scales = "free_x", switch = "x")
 
-ggsave("Figures/Fig 5_new.png", width = 8, height = 11, units = "in", dpi = 400)
+ggsave("Figures/Fig 5.png", width = 8, height = 11, units = "in", dpi = 400)
 
 
 # plot time series of behavior proportions
@@ -1325,7 +1326,7 @@ behav.map <- ggplot() +
   geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
   geom_path(data = dat.out %>%
               filter(id %in% c(205540, 41614)), aes(lon, lat, group = id, color = behav),
-            alpha = 1, linewidth = 1, linejoin = "round", linemitre = 1) +
+            alpha = 1, linewidth = 1.2, linejoin = "round", linemitre = 1) +
   # geom_point(data = dat.out %>%
   #              filter(id %in% c(205540, 41614)), aes(lon, lat, color = behav)) +
   scale_color_manual('', values = MetPalettes$Egypt[[1]], guide = "none") +
@@ -1343,12 +1344,29 @@ behav.map <- ggplot() +
   facet_grid(time.step ~ id)
 
 
+# Define design layout for composite plot
+design <- "
+1111
+2233
+"
+
+(guide_area() + behav.ts.plot + behav.map) +
+  plot_layout(guides = 'collect', design = design) +
+  plot_annotation(tag_levels = 'a', tag_suffix = ')') &
+  theme(plot.tag = element_text(size = 20), legend.text = element_text(size = 14),
+        legend.justification = c(0.5,0))
+
 (guide_area() / (behav.ts.plot + behav.map)) +
   plot_layout(nrow = 2, guides = 'collect', heights = unit(c(1, 1), c("cm", "null"))) +
   plot_annotation(tag_levels = 'a', tag_suffix = ')') &
   theme(plot.tag = element_text(size = 20), legend.text = element_text(size = 14))
 
-# ggsave("Figures/Fig 6_new.png", width = 12, height = 8, units = "in", dpi = 400)
+ggsave("Figures/Fig 6.png", width = 12, height = 8, units = "in", dpi = 400)
+
+# Crop empty space at top of fig while preserving plot sizes
+img <- image_read("Figures/Fig 6.png")
+cropped_img <- image_crop(img, geometry = geometry_area(width = 4800, height = 3200, x_off = 0, y_off = 1000))
+image_write(cropped_img, path = "Figures/Fig 6.png", format = "png")
 
 
 
@@ -1489,11 +1507,12 @@ state.dep_1h.p <- ggplot(behav.res.seg.1hr3 |>
         axis.text.y = element_text(size = 14),
         axis.text.x.bottom = element_text(size = 12, angle = 45, vjust = 1, hjust=1),
         strip.text = element_text(size = 16),
-        strip.placement = "outside") +
+        strip.text.x = element_blank(),
+        strip.background = element_blank()) +
   scale_fill_manual('', values = c(MetPalettes$Egypt[[1]][1:2], "black",
                                    MetPalettes$Egypt[[1]][3:4])) +
   scale_y_continuous(breaks = c(0.00, 0.50, 1.00)) +
-  facet_wrap(var ~ tstep, scales = "free_x", strip.position = "top")
+  facet_grid(tstep ~ var, scales = "free_x")
 
 
 
@@ -1510,10 +1529,11 @@ state.dep_4h.p <- ggplot(behav.res.seg.4hr3 |>
         axis.text.y = element_text(size = 14),
         axis.text.x.bottom = element_text(size = 12, angle = 45, vjust = 1, hjust=1),
         strip.text = element_text(size = 16),
-        strip.placement = "outside") +
+        strip.text.x = element_blank(),
+        strip.background = element_blank()) +
   scale_fill_manual('', values = MetPalettes$Egypt[[1]], guide = "none") +
   scale_y_continuous(breaks = c(0.00, 0.50, 1.00)) +
-  facet_wrap(var ~ tstep, scales = "free_x", strip.position = "top")
+  facet_grid(tstep ~ var, scales = "free_x")
 
 
 
@@ -1530,10 +1550,11 @@ state.dep_8h.p <- ggplot(behav.res.seg.8hr3 |>
         axis.text.y = element_text(size = 14),
         axis.text.x.bottom = element_text(size = 12, angle = 45, vjust = 1, hjust=1),
         strip.text = element_text(size = 16),
+        strip.background = element_blank(),
         strip.placement = "outside") +
   scale_fill_manual('', values = MetPalettes$Egypt[[1]], guide = "none") +
   scale_y_continuous(breaks = c(0.00, 0.50, 1.00)) +
-  facet_wrap(var ~ tstep, scales = "free_x", strip.position = "top")
+  facet_grid(tstep ~ var, scales = "free_x", switch = "x")
 
 
 # create composite plot

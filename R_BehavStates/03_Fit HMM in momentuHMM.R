@@ -15,6 +15,8 @@ library(patchwork)
 library(future)
 library(furrr)
 library(progressr)
+library(ggh4x)
+library(magick)
 
 source("R_BehavStates/helper functions.R")
 
@@ -779,7 +781,7 @@ ggplot() +
         strip.placement = "outside") +
   facet_wrap(~ var, scales = "free", strip.position = "bottom")
 
-ggsave("Figures/Fig 3_new.png", width = 9, height = 5, units = "in", dpi = 400)
+# ggsave("Figures/Fig 3.png", width = 9, height = 5, units = "in", dpi = 400)
 
 
 
@@ -807,7 +809,8 @@ behav.ts.plot <- ggplot() +
 behav.map <- ggplot() +
   geom_sf(data = brazil, fill = "grey60", size = 0.3, color = "black") +
   geom_path(data = all.fits %>%
-              filter(ID %in% c(205540, 41614)), aes(lon, lat, group = ID, color = state), alpha = 1, linewidth = 1,
+              filter(ID %in% c(205540, 41614)),
+            aes(lon, lat, group = ID, color = state), alpha = 1, linewidth = 1.2,
             linejoin = "round", linemitre = 1) +
   # geom_point(data = all.fits %>%
   #              filter(ID %in% c(205540, 41614)), aes(lon, lat, color = state)) +
@@ -826,12 +829,24 @@ behav.map <- ggplot() +
   facet_grid(time.step ~ ID)
 
 
-(guide_area() / (behav.ts.plot + behav.map)) +
-  plot_layout(nrow = 2, guides = 'collect', heights = unit(c(1, 1), c("cm", "null"))) +
-  plot_annotation(tag_levels = 'a', tag_suffix = ')') &
-  theme(plot.tag = element_text(size = 20), legend.text = element_text(size = 14))
+# Define design layout for composite plot
+design <- "
+1111
+2233
+"
 
-# ggsave("Figures/Fig 4_new.png", width = 12, height = 8, units = "in", dpi = 400)
+(guide_area() + behav.ts.plot + behav.map) +
+  plot_layout(guides = 'collect', design = design) +
+  plot_annotation(tag_levels = 'a', tag_suffix = ')') &
+  theme(plot.tag = element_text(size = 20), legend.text = element_text(size = 14),
+        legend.justification = c(0.5,0))
+
+ggsave("Figures/Fig 4.png", width = 12, height = 8, units = "in", dpi = 400)
+
+# Crop empty space at top of fig while preserving plot sizes
+img <- image_read("Figures/Fig 4.png")
+cropped_img <- image_crop(img, geometry = geometry_area(width = 4800, height = 3200, x_off = 0, y_off = 1000))
+image_write(cropped_img, path = "Figures/Fig 4.png", format = "png")
 
 
 
@@ -841,7 +856,7 @@ behav.map <- ggplot() +
 
 # plot state-dependent distributions
 ggplot() +
-  geom_line(data = state.dep.dist, aes(x = x, y = density, colour = state), size=1) +
+  geom_line(data = state.dep.dist, aes(x = x, y = density, colour = state), linewidth = 1) +
   scale_color_manual('', values = MetPalettes$Egypt[[1]][c(1,3,4)]) +
   labs(x = "", y = "Density") +
   theme_bw() +
@@ -850,9 +865,10 @@ ggplot() +
         panel.grid = element_blank(),
         axis.text = element_text(size = 14),
         axis.title.y = element_text(size = 18),
-        strip.text = element_text(size = 16),
-        strip.placement = "outside") +
-  facet_wrap(var ~ tstep, scales = "free", strip.position = "top")
+        strip.text = element_text(size = 16, face = "bold"),
+        strip.placement = "outside",
+        strip.background = element_blank()) +
+  ggh4x::facet_grid2(tstep ~ var, scales = "free", independent = "y", switch = "x")
 
 # ggsave("Figures/Fig S3.png", width = 10, height = 7, units = "in", dpi = 400)
 
