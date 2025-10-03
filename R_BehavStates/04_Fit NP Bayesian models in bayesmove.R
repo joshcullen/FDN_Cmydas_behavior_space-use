@@ -1356,10 +1356,10 @@ design <- "
   theme(plot.tag = element_text(size = 20), legend.text = element_text(size = 14),
         legend.justification = c(0.5,0))
 
-(guide_area() / (behav.ts.plot + behav.map)) +
-  plot_layout(nrow = 2, guides = 'collect', heights = unit(c(1, 1), c("cm", "null"))) +
-  plot_annotation(tag_levels = 'a', tag_suffix = ')') &
-  theme(plot.tag = element_text(size = 20), legend.text = element_text(size = 14))
+# (guide_area() / (behav.ts.plot + behav.map)) +
+#   plot_layout(nrow = 2, guides = 'collect', heights = unit(c(1, 1), c("cm", "null"))) +
+#   plot_annotation(tag_levels = 'a', tag_suffix = ')') &
+#   theme(plot.tag = element_text(size = 20), legend.text = element_text(size = 14))
 
 ggsave("Figures/Fig 6.png", width = 12, height = 8, units = "in", dpi = 400)
 
@@ -1634,4 +1634,5 @@ behav.ts.plot2 + behav.map2 +
 #      theta.estim.long.1hr, theta.estim.long.4hr, theta.estim.long.8hr,
 #      dat.out.1hr, dat.out.4hr, dat.out.8hr,
 #      file = "Processed_data/bayesmove_model_fits.RData")
-
+saveRDS(dat.out, file = "Processed_data/M4_tracks.rds")
+saveRDS(theta.estim.long, file = "Processed_data/M4_time_prop.rds")

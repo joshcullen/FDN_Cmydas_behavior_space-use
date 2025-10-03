@@ -70,7 +70,7 @@ plot(dat_8hr_2)
 
 
 
-#### Fit HMM for 2 states using step lengths and turning angles ####
+#### Fit HMM for 2 states using net displacement, step lengths and turning angles ####
 
 # Calculate displacement separately per ID
 dat_1hr_3 <- dat_1hr_2 %>%
@@ -160,7 +160,7 @@ set.seed(2022)
 tic()
 fit_1hr_2states <- run.HMMs(data = dat_1hr_3, K = 2, Par0 = Par0,
                             state.names = c('ARS','Migratory'), niter = 20)
-toc()  #took 12 min to run
+toc()  #took 2.5 min to run
 
 
 fit_1hr_2states
@@ -927,3 +927,4 @@ behav.ts.res.plot + behav.res.map +
 
 # save(dat_1hr_3, dat_4hr_3, dat_8hr_3, fit_1hr_3states, fit_4hr_3states, fit_8hr_3states,
 #      file = "Processed_data/HMM_data_and_model_fits.RData")
+saveRDS(all.fits, file = "Processed_data/HMM_tracks.rds")

@@ -706,8 +706,13 @@ date.labs <- res_crw_8hr %>%
 
 behav.ts.plot <- ggplot() +
   geom_line(data = all.mods %>%
-              filter(id == 205540 | id == 41614), aes(date, g, color = time.step),
-            alpha = 0.7, linewidth = 1) +
+              filter(id == 205540 | id == 41614,
+                     time.step %in% c("Irregular","1hr")),
+            aes(date, g, color = time.step), alpha = 0.5, linewidth = 1) +
+  geom_line(data = all.mods %>%
+              filter(id == 205540 | id == 41614,
+                     time.step %in% c("4hr","8hr")),
+            aes(date, g, color = time.step), alpha = 0.8, linewidth = 1) +
   scale_color_manual("Time Step", values = RColorBrewer::brewer.pal(4, "Dark2")) +
   geom_rug(data = date.labs, aes(as_datetime(date)), linewidth = 1, length = unit(0.05, "npc")) +
   labs(x = 'Date', y = expression(gamma)) +
@@ -862,3 +867,4 @@ behav.ts.plot + behav.map + plot_annotation(tag_levels = 'a', tag_suffix = ')') 
 # save(fit_crw_fitted, fit_crw_1hr, fit_crw_4hr, fit_crw_8hr,
 #      fit_crw_jmpm_fitted, fit_crw_mpm_1hr, fit_crw_mpm_4hr, fit_crw_mpm_8hr,
 #      file = "Processed_data/SSM_model_fits.RData")
+saveRDS(all.mods, file = "Processed_data/SSM_tracks.rds")
